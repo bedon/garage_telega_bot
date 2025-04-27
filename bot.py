@@ -5,7 +5,7 @@ from gay_colorizer import *
 TOKEN = '7736052370:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
 
 def god_or_gay(user_name: str) -> str:
-    return "GOD DETECTED\n" + user_name + "\n" if user_name.lower() == "bogdan" else colorize_gay("GAY DETECTED") + "\n" + user_name + "\n"
+    return "GAY GOD DETECTED\n" + user_name + "\n" if user_name.lower() == "bogdan" else colorize_gay("GAY DETECTED") + "\n" + user_name + "\n"
 
 async def replace_instagram_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
