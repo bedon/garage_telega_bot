@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-TOKEN = 'твой_токен_сюда'
+TOKEN = '7736052370:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
 
 async def replace_instagram_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
