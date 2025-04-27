@@ -9,9 +9,9 @@ TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
 
 async def god_or_gay(user_name: str) -> str:
     if user_name.lower() == "bogdan":
-        return "🌈 GAY GOD DETECTED 🏳️‍🌈\n" + user_name + "\n"
+        return "👑 GOD DETECTED 👑\n" + user_name + "\n"
     else:
-        return "🌈 " + colorize_gay("GAY DETECTED") + "\n" + user_name + "\n"
+        return "🌈 " + colorize_gay("GAY DETECTED 💦💦💦") + "\n" + user_name + "\n"
 
 async def delete_message(update: Update) -> None:
     try:
