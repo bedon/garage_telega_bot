@@ -13,7 +13,7 @@ async def god_or_gay(user_name: str) -> str:
     if user_name.lower() == "bogdan":
         return "👑 GOD DETECTED 👑\n" + user_name + "\n"
     else:
-        return "🌈 " + "GAY DETECTED 💦💦💦" + "\n" + user_name + "\n"
+        return "🌈 " + "GAY DETECTED 💦" + "\n" + user_name + "\n"
 
 async def randomize_status(user_name: str, chat_id: int) -> str:
     # Initialize chat state if not exists
@@ -38,7 +38,7 @@ async def randomize_status(user_name: str, chat_id: int) -> str:
     if chat_state["streak"] >= 3:
         status = "🌈 GAY SPAMMER 💦💦💦\n"
     else:
-        status = random.choice(["👑 GOD 👑\n", "😎 CHILL GUY 🚬\n"])
+        status = random.choice(["👑 NICE GUY 👑\n", "😎 CHILL GUY 🚬\n", "COOL DUDE 🤘\n", "FUNNY DUDE 🤣\n"])
 
     return f"{status} {user_name}"
 
