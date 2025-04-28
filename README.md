@@ -49,3 +49,6 @@ python bot.py
    - For TikTok: Download and send the video directly
    - Add a fun rainbow message with the sender's name
    - Delete the original message
+  
+@garage_dude_stage_bot - for local testing
+@GarageDudeBot - prod bot
