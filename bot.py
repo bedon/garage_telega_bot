@@ -15,23 +15,62 @@ async def god_or_gay(user_name: str) -> str:
     else:
         return "🌈 " + "GAY DETECTED 💦💦💦" + "\n" + user_name + "\n"
 
-async def randomize_status(user_name: str) -> str:
-    if not hasattr(randomize_status, "_last"):
-        randomize_status._last = None
-        randomize_status._streak = 0
-
-    if user_name == randomize_status._last:
-        randomize_status._streak += 1
+async def randomize_status(user_name: str, chat_id: int) -> str:
+    # Initialize chat state if not exists
+    if not hasattr(randomize_status, "_chat_states"):
+        randomize_status._chat_states = {}
+    
+    # Initialize state for this chat if not exists
+    if chat_id not in randomize_status._chat_states:
+        randomize_status._chat_states[chat_id] = {
+            "last_user": None,
+            "streak": 0
+        }
+    
+    chat_state = randomize_status._chat_states[chat_id]
+    
+    if user_name == chat_state["last_user"]:
+        chat_state["streak"] += 1
     else:
-        randomize_status._last = user_name
-        randomize_status._streak = 1
+        chat_state["last_user"] = user_name
+        chat_state["streak"] = 1
 
-    if randomize_status._streak >= 3:
+    if chat_state["streak"] >= 3:
         status = "🌈 GAY SPAMMER 💦💦💦\n"
     else:
         status = random.choice(["👑 GOD 👑\n", "😎 CHILL GUY 🚬\n"])
 
     return f"{status} {user_name}"
+
+async def handle_instagram(update: Update, message: str, sender_name: str) -> None:
+    chat_id = update.message.chat_id
+    new_message = f"{await randomize_status(sender_name, chat_id)} 📸 From Instagram:\n\n" + message.replace(
+        "instagram", "ddinstagram"
+    )
+    await delete_message(update)
+    await update.message.chat.send_message(new_message)
+
+async def handle_tiktok(update: Update, message: str, sender_name: str) -> None:
+    await delete_message(update)
+    chat_id = update.message.chat_id
+    user_prefix = await randomize_status(sender_name, chat_id)
+
+    try:
+        api_url = "https://tikwm.com/api/"
+        params = {"url": message}
+        response = requests.get(api_url, params=params, timeout=10)
+        data = response.json()
+
+        if data.get("code") == 0:
+            video_url = data["data"]["play"]
+            await update.message.chat.send_video(video=video_url, caption=f"{user_prefix}🎵 From TikTok")
+        else:
+            print(f"TikTok API error: {data}")
+            await update.message.chat.send_message(f"{user_prefix}🎵 From TikTok\n\n[Не вдалося отримати відео] {message}")
+
+    except Exception as e:
+        print(f"Помилка обробки TikTok відео: {e}")
+        await update.message.chat.send_message(f"{user_prefix}🎵 From TikTok\n\n[Помилка при завантаженні відео] {message}")
 
 async def delete_message(update: Update) -> None:
     try:
