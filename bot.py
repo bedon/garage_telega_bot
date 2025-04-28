@@ -1,9 +1,11 @@
+import random
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 import requests
-from gay_colorizer import *
 
 TOKEN = '7736052370:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
+TOKEN_TEST = '7259399630:AAEAnLGOBk7JkToma9Xh-i8oGoKDUmbGW2o'
 INSTAGRAM_REEL = "https://www.instagram.com/reel/"
 TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
 
@@ -11,7 +13,25 @@ async def god_or_gay(user_name: str) -> str:
     if user_name.lower() == "bogdan":
         return "👑 GOD DETECTED 👑\n" + user_name + "\n"
     else:
-        return "🌈 " + colorize_gay("GAY DETECTED 💦💦💦") + "\n" + user_name + "\n"
+        return "🌈 " + "GAY DETECTED 💦💦💦" + "\n" + user_name + "\n"
+
+async def randomize_status(user_name: str) -> str:
+    if not hasattr(randomize_status, "_last"):
+        randomize_status._last = None
+        randomize_status._streak = 0
+
+    if user_name == randomize_status._last:
+        randomize_status._streak += 1
+    else:
+        randomize_status._last = user_name
+        randomize_status._streak = 1
+
+    if randomize_status._streak >= 3:
+        status = "🌈 GAY SPAMMER 💦💦💦\n"
+    else:
+        status = random.choice(["👑 GOD 👑\n", "😎 CHILL GUY 🚬\n"])
+
+    return f"{status} {user_name}"
 
 async def delete_message(update: Update) -> None:
     try:
@@ -20,7 +40,7 @@ async def delete_message(update: Update) -> None:
         print(f"Не вдалося видалити повідомлення: {e}")
 
 async def handle_instagram(update: Update, message: str, sender_name: str) -> None:
-    new_message = f"{await god_or_gay(sender_name)}📸 From Instagram:\n\n" + message.replace(
+    new_message = f"{await randomize_status(sender_name)} 📸 From Instagram:\n\n" + message.replace(
         "instagram", "ddinstagram"
     )
     await delete_message(update)
@@ -28,7 +48,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
 
 async def handle_tiktok(update: Update, message: str, sender_name: str) -> None:
     await delete_message(update)
-    user_prefix = await god_or_gay(sender_name)
+    user_prefix = await randomize_status(sender_name)
 
     try:
         api_url = "https://tikwm.com/api/"
