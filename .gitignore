@@ -43,3 +43,5 @@ Thumbs.db
 *.key
 *.pem
 *.env
+.coverage
+htmlcov/
