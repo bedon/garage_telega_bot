@@ -56,7 +56,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
         instagram_id = re.search(r'/(?:p|reel)/([^/?]+)', message)
         if not instagram_id:
             # Не валідне посилання, повертаємо помилку але не видаляємо повідомлення користувача
-            await update.message.chat.send_message(f"{user_prefix}📸 From Instagram\n\n[Невірне посилання Instagram] {message}")
+            await update.message.chat.send_message(f"{user_prefix} 📸 From Instagram\n\n[Невірне посилання Instagram] {message}")
             return
             
         instagram_id = instagram_id.group(1)
@@ -81,7 +81,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
                 # Відправляємо відео і тільки потім видаляємо повідомлення користувача
                 await update.message.chat.send_video(
                     video=video_bytes, 
-                    caption=f"{user_prefix}{instagram_link}",
+                    caption=f"{user_prefix} {instagram_link}",
                     parse_mode="HTML"
                 )
                 await delete_message(update)
@@ -108,7 +108,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
                         # Відправляємо відео і тільки потім видаляємо повідомлення користувача
                         await update.message.chat.send_video(
                             video=video_file, 
-                            caption=f"{user_prefix}{instagram_link}",
+                            caption=f"{user_prefix} {instagram_link}",
                             parse_mode="HTML"
                         )
                         await delete_message(update)
@@ -131,7 +131,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
                         # Відправляємо відео і тільки потім видаляємо повідомлення користувача
                         await update.message.chat.send_video(
                             video=data["download_url"], 
-                            caption=f"{user_prefix}{instagram_link}",
+                            caption=f"{user_prefix} {instagram_link}",
                             parse_mode="HTML"
                         )
                         await delete_message(update)
@@ -140,7 +140,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
                         # Відправляємо фото і тільки потім видаляємо повідомлення користувача
                         await update.message.chat.send_photo(
                             photo=data["download_url"], 
-                            caption=f"{user_prefix}{instagram_link}",
+                            caption=f"{user_prefix} {instagram_link}",
                             parse_mode="HTML"
                         )
                         await delete_message(update)
@@ -172,7 +172,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
                 # Відправляємо відео і тільки потім видаляємо повідомлення користувача
                 await update.message.chat.send_video(
                     video=video_url, 
-                    caption=f"{user_prefix}{instagram_link}",
+                    caption=f"{user_prefix} {instagram_link}",
                     parse_mode="HTML"
                 )
                 await delete_message(update)
@@ -184,7 +184,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
                 # Відправляємо фото і тільки потім видаляємо повідомлення користувача
                 await update.message.chat.send_photo(
                     photo=image_url, 
-                    caption=f"{user_prefix}{instagram_link}",
+                    caption=f"{user_prefix} {instagram_link}",
                     parse_mode="HTML"
                 )
                 await delete_message(update)
@@ -196,7 +196,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
         # ОСТАННІЙ РЕЗЕРВНИЙ ВАРІАНТ: Надаємо корисні посилання для скачування
         # Не видаляємо повідомлення користувача, оскільки ми не змогли скачати відео
         await update.message.chat.send_message(
-            f"{user_prefix}{instagram_link}\n\n"
+            f"{user_prefix} {instagram_link}\n\n"
             f"Не вдалося автоматично скачати відео. Спробуйте ці сервіси:\n\n"
             f"1. https://saveinsta.app/instagram-video-downloader/{instagram_id}\n"
             f"2. https://www.y2mate.com/instagram/{instagram_id}\n"
@@ -209,7 +209,7 @@ async def handle_instagram(update: Update, message: str, sender_name: str) -> No
         print(f"Помилка обробки Instagram відео: {e}")
         # Не видаляємо повідомлення користувача, оскільки сталася помилка
         await update.message.chat.send_message(
-            f"{user_prefix}<a href='{message}'>📸 From Instagram</a>\n\n"
+            f"{user_prefix} <a href='{message}'>📸 From Instagram</a>\n\n"
             f"Помилка при обробці відео. Спробуйте самостійно скачати через:\n\n"
             f"1. https://saveinsta.app/\n"
             f"2. https://instadownloader.co/\n\n"
@@ -234,7 +234,7 @@ async def handle_tiktok(update: Update, message: str, sender_name: str) -> None:
             video_url = data["data"]["play"]
             await update.message.chat.send_video(
                 video=video_url, 
-                caption=f"{user_prefix}{tiktok_link}",
+                caption=f"{user_prefix} {tiktok_link}",
                 parse_mode="HTML"
             )
             await delete_message(update)
@@ -250,7 +250,7 @@ async def handle_tiktok(update: Update, message: str, sender_name: str) -> None:
                 if data.get("success") and data.get("video_url"):
                     await update.message.chat.send_video(
                         video=data["video_url"], 
-                        caption=f"{user_prefix}{tiktok_link}",
+                        caption=f"{user_prefix} {tiktok_link}",
                         parse_mode="HTML"
                     )
                     await delete_message(update)
@@ -261,14 +261,14 @@ async def handle_tiktok(update: Update, message: str, sender_name: str) -> None:
                 
             # Якщо обидва API не вдалося використати, відправляємо повідомлення без видалення
             await update.message.chat.send_message(
-                f"{user_prefix}{tiktok_link}\n\n[Не вдалося отримати відео]",
+                f"{user_prefix} {tiktok_link}\n\n[Не вдалося отримати відео]",
                 parse_mode="HTML"
             )
 
     except Exception as e:
         print(f"Помилка обробки TikTok відео: {e}")
         await update.message.chat.send_message(
-            f"{user_prefix}{tiktok_link}\n\n[Помилка при завантаженні відео]",
+            f"{user_prefix} {tiktok_link}\n\n[Помилка при завантаженні відео]",
             parse_mode="HTML"
         )
 
