@@ -9,6 +9,7 @@ A Telegram bot that automatically downloads and forwards videos from various soc
 - Deletes original messages after successful download
 - Provides alternative download links if automatic download fails
 - Customizable user status messages
+- Automatic handler discovery and loading
 
 ## Dependencies
 
@@ -64,7 +65,7 @@ The bot uses the following environment variables:
 
 ## Creating Custom Handlers
 
-You can add support for additional social media platforms by creating new handler classes. Here's how:
+You can add support for additional social media platforms by creating new handler classes. The bot automatically discovers and loads all handlers from the `src/handlers` directory. Here's how to create a new handler:
 
 1. Create a new file in `src/handlers/` (e.g., `youtube_handler.py`)
 2. Implement the handler class following this template:
@@ -100,18 +101,12 @@ class YouTubeHandler:
             # Handle errors appropriately
 ```
 
-3. Import and add your handler to `all_handlers` in `src/main.py`:
-```python
-from handlers.youtube_handler import YouTubeHandler
+3. The handler will be automatically loaded when the bot starts. No need to modify any other files!
 
-all_handlers = [
-    InstagramHandler(),
-    FacebookHandler(),
-    TwitterHandler(),
-    TikTokHandler(),
-    YouTubeHandler()  # Add your new handler here
-]
-```
+### Handler Naming Convention
+
+- Handler class names must end with `Handler` (e.g., `YouTubeHandler`, `InstagramHandler`)
+- The file name should match the class name in lowercase with underscores (e.g., `youtube_handler.py` for `YouTubeHandler`)
 
 ## Handler Development Guidelines
 
