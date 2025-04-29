@@ -7,30 +7,29 @@ import tempfile
 import requests
 from telegram import Update
 
-from message_handler import MessageHandler
+from utils import delete_message
 
 
 class InstagramHandler:
-    INSTAGRAM_LINKS = ["https://www.instagram.com/reel/", "https://www.instagram.com/p/"]
+    def __init__(self):
+        self.INSTAGRAM_LINKS = ["https://www.instagram.com/reel/", "https://www.instagram.com/p/"]
 
-    @staticmethod
-    def can_handle(message: str) -> bool:
-        return any(link in message for link in InstagramHandler.INSTAGRAM_LINKS)
+    def can_handle(self, message: str) -> bool:
+        return any(link in message for link in self.INSTAGRAM_LINKS)
 
-    @staticmethod
-    async def handle(update: Update, message: str, sender_name: str) -> None:
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
             instagram_id_match = re.search(r'/(?:p|reel)/([^/?]+)', message)
             if not instagram_id_match:
                 await update.message.chat.send_message(
-                    f"{sender_name} 📸 From Instagram\n\n[Невірне посилання Instagram] {message}"
+                    f"{sender_name} 📸 From Instagram\n\n[Invalid Instagram link] {message}"
                 )
                 return
 
             instagram_id = instagram_id_match.group(1)
             instagram_link = f'<a href="{message}">📸 From Instagram</a>'
 
-            # Попытка скачать через yt-dlp напрямую в память
+            # Try to download using yt-dlp directly to memory
             try:
                 process = subprocess.run(
                     ["yt-dlp", "-o", "-", "--format", "best", message],
@@ -47,12 +46,12 @@ class InstagramHandler:
                         caption=f"{sender_name} {instagram_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
             except Exception:
                 pass
 
-            # Попытка скачать через временный файл
+            # Try to download using temporary file
             try:
                 temp_dir = tempfile.mkdtemp()
                 output_path = os.path.join(temp_dir, f"{instagram_id}.mp4")
@@ -71,13 +70,13 @@ class InstagramHandler:
                             caption=f"{sender_name} {instagram_link}",
                             parse_mode="HTML"
                         )
-                        await MessageHandler.delete_message(update)
+                        await delete_message(update)
                         os.remove(output_path)
                         return
             except Exception:
                 pass
 
-            # Попытка через сторонний API
+            # Try using third-party API
             try:
                 api_url = f"https://instagram-stories-api.vercel.app/api/post?url={message}"
                 response = requests.get(api_url, timeout=20)
@@ -91,7 +90,7 @@ class InstagramHandler:
                                 caption=f"{sender_name} {instagram_link}",
                                 parse_mode="HTML"
                             )
-                            await MessageHandler.delete_message(update)
+                            await delete_message(update)
                             return
                         elif data.get("media_type") == "image":
                             await update.message.chat.send_photo(
@@ -99,12 +98,12 @@ class InstagramHandler:
                                 caption=f"{sender_name} {instagram_link}",
                                 parse_mode="HTML"
                             )
-                            await MessageHandler.delete_message(update)
+                            await delete_message(update)
                             return
             except Exception:
                 pass
 
-            # Последняя попытка — парсинг исходной страницы
+            # Last attempt - parse the source page
             try:
                 headers = {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -125,7 +124,7 @@ class InstagramHandler:
                         caption=f"{sender_name} {instagram_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
 
                 image_match = re.search(r'display_url":"([^"]+)"', response.text)
@@ -136,29 +135,29 @@ class InstagramHandler:
                         caption=f"{sender_name} {instagram_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
             except Exception:
                 pass
 
-            # Если все методы провалились
+            # If all methods failed
             await update.message.chat.send_message(
                 f"{sender_name} {instagram_link}\n\n"
-                f"Не вдалося автоматично скачати відео. Спробуйте ці сервіси:\n\n"
+                f"Failed to automatically download the video. Try these services:\n\n"
                 f"1. https://saveinsta.app/instagram-video-downloader/{instagram_id}\n"
                 f"2. https://www.y2mate.com/instagram/{instagram_id}\n"
                 f"3. https://sssinstagram.com/\n\n"
-                f"Оригінальне посилання: {message}",
+                f"Original link: {message}",
                 parse_mode="HTML"
             )
 
         except Exception as e:
-            print(f"Помилка обробки Instagram відео: {e}")
+            print(f"Error processing Instagram video: {e}")
             await update.message.chat.send_message(
                 f"{sender_name} <a href='{message}'>📸 From Instagram</a>\n\n"
-                f"Помилка при обробці відео. Спробуйте самостійно скачати через:\n\n"
+                f"Error processing video. Try downloading manually through:\n\n"
                 f"1. https://saveinsta.app/\n"
                 f"2. https://instadownloader.co/\n\n"
-                f"Оригінальне посилання: {message}",
+                f"Original link: {message}",
                 parse_mode="HTML"
             )

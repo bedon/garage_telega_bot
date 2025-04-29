@@ -1,18 +1,17 @@
 import requests
 from telegram import Update
 
-from message_handler import MessageHandler
+from utils import delete_message
 
 
 class TikTokHandler:
-    TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
+    def __init__(self):
+        self.TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
 
-    @staticmethod
-    def can_handle(message: str) -> bool:
-        return any(link in message for link in TikTokHandler.TIKTOK_LINKS)
+    def can_handle(self, message: str) -> bool:
+        return any(link in message for link in self.TIKTOK_LINKS)
 
-    @staticmethod
-    async def handle(update: Update, message: str, sender_name: str) -> None:
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
         tiktok_link = f'<a href="{message}">🎵 From TikTok</a>'
 
         try:
@@ -28,10 +27,10 @@ class TikTokHandler:
                     caption=f"{sender_name} {tiktok_link}",
                     parse_mode="HTML"
                 )
-                await MessageHandler.delete_message(update)
+                await delete_message(update)
                 return
             else:
-                # Пробуем альтернативный API
+                # Try alternative API
                 try:
                     api_url = "https://api.tiktokdownload.com/api"
                     params = {"url": message}
@@ -44,20 +43,20 @@ class TikTokHandler:
                             caption=f"{sender_name} {tiktok_link}",
                             parse_mode="HTML"
                         )
-                        await MessageHandler.delete_message(update)
+                        await delete_message(update)
                         return
                 except Exception:
                     pass
 
-                # Если оба API не сработали
+                # If both APIs failed
                 await update.message.chat.send_message(
-                    f"{sender_name} {tiktok_link}\n\n[Не вдалося отримати відео]",
+                    f"{sender_name} {tiktok_link}\n\n[Failed to get video]",
                     parse_mode="HTML"
                 )
 
         except Exception as e:
-            print(f"Помилка обробки TikTok відео: {e}")
+            print(f"Error processing TikTok video: {e}")
             await update.message.chat.send_message(
-                f"{sender_name} {tiktok_link}\n\n[Помилка при завантаженні відео]",
+                f"{sender_name} {tiktok_link}\n\n[Error downloading video]",
                 parse_mode="HTML"
             )

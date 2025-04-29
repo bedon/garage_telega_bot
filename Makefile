@@ -13,3 +13,6 @@ stop:
 clean:
 	rm -rf venv
 	rm -f bot.log bot.pid 
+
+dev:
+	python src/main.py

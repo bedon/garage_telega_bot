@@ -5,22 +5,21 @@ import os
 
 from telegram import Update
 
-from message_handler import MessageHandler
+from utils import delete_message
 
 
 class FacebookHandler:
-    FACEBOOK_LINKS = ["https://www.facebook.com/reel/", "https://fb.watch/"]
+    def __init__(self):
+        self.FACEBOOK_LINKS = ["https://www.facebook.com/reel/", "https://fb.watch/"]
 
-    @staticmethod
-    def can_handle(message: str) -> bool:
-        return any(link in message for link in FacebookHandler.FACEBOOK_LINKS)
+    def can_handle(self, message: str) -> bool:
+        return any(link in message for link in self.FACEBOOK_LINKS)
 
-    @staticmethod
-    async def handle(update: Update, message: str, sender_name: str) -> None:
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
             fb_link = f'<a href="{message}">📘 From Facebook</a>'
 
-            # Попытка скачать через yt-dlp напрямую в память
+            # Try to download using yt-dlp directly to memory
             try:
                 process = subprocess.run(
                     ["yt-dlp", "-o", "-", "--format", "best", message],
@@ -37,12 +36,12 @@ class FacebookHandler:
                         caption=f"{sender_name} {fb_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
             except Exception:
                 pass
 
-            # Попытка скачать через временный файл
+            # Try to download using temporary file
             try:
                 temp_dir = tempfile.mkdtemp()
                 output_path = os.path.join(temp_dir, "facebook_video.mp4")
@@ -61,30 +60,30 @@ class FacebookHandler:
                             caption=f"{sender_name} {fb_link}",
                             parse_mode="HTML"
                         )
-                        await MessageHandler.delete_message(update)
+                        await delete_message(update)
                         os.remove(output_path)
                         return
             except Exception:
                 pass
 
-            # Если не удалось скачать
+            # If download failed
             await update.message.chat.send_message(
                 f"{sender_name} {fb_link}\n\n"
-                f"Не вдалося автоматично скачати відео.\n"
-                f"Спробуйте самостійно через:\n\n"
+                f"Failed to automatically download the video.\n"
+                f"Try downloading manually through:\n\n"
                 f"1. https://fdown.net/\n"
                 f"2. https://snapvid.net/\n\n"
-                f"Оригінальне посилання: {message}",
+                f"Original link: {message}",
                 parse_mode="HTML"
             )
 
         except Exception as e:
-            print(f"Помилка обробки Facebook відео: {e}")
+            print(f"Error processing Facebook video: {e}")
             await update.message.chat.send_message(
                 f"{sender_name} <a href='{message}'>📘 From Facebook</a>\n\n"
-                f"Помилка при обробці відео. Спробуйте самостійно через:\n\n"
+                f"Error processing video. Try downloading manually through:\n\n"
                 f"1. https://fdown.net/\n"
                 f"2. https://snapvid.net/\n\n"
-                f"Оригінальне посилання: {message}",
+                f"Original link: {message}",
                 parse_mode="HTML"
             )
