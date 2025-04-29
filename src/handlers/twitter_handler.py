@@ -4,7 +4,7 @@ import tempfile
 import os
 
 from telegram import Update
-from src.utils import delete_message
+from utils import delete_message
 
 class TwitterHandler:
     def __init__(self):
