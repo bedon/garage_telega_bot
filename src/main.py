@@ -4,15 +4,10 @@ import importlib
 import inspect
 import os
 from dotenv import load_dotenv
-from utils import randomize_status
+from utils import randomize_status, load_handlers
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-
-from handlers.instagram_handler import InstagramHandler
-from handlers.facebook_handler import FacebookHandler
-from handlers.twitter_handler import TwitterHandler
-from handlers.tiktok_handler import TikTokHandler
 
 # Load environment variables
 load_dotenv()
@@ -22,12 +17,7 @@ if not TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable is not set")
 
 # Initialize all handlers
-all_handlers = [
-    InstagramHandler(),
-    FacebookHandler(),
-    TwitterHandler(),
-    TikTokHandler()
-]
+all_handlers = load_handlers()
 
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None or update.message.text is None:

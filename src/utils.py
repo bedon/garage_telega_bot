@@ -1,4 +1,7 @@
 import random
+import importlib
+import pkgutil
+import inspect
 from telegram import Update
 
 async def delete_message(update: Update) -> None:
@@ -35,3 +38,27 @@ async def randomize_status(user_name: str, chat_id: int) -> str:
         status = random.choice(["👑 NICE GUY 👑\n", "😎 CHILL GUY 🚬\n", "COOL DUDE 🤘\n", "FUNNY DUDE 🤣\n"])
 
     return f"{status} {user_name}"
+
+def load_handlers():
+    """
+    Automatically discovers and loads all handler classes from the handlers directory.
+    Returns a list of instantiated handler objects.
+    """
+    handlers = []
+    handlers_package = "handlers"
+    
+    # Import the handlers package
+    handlers_module = importlib.import_module(handlers_package)
+    
+    # Iterate through all modules in the handlers package
+    for _, module_name, _ in pkgutil.iter_modules(handlers_module.__path__):
+        # Import the module
+        module = importlib.import_module(f"{handlers_package}.{module_name}")
+        
+        # Find all classes in the module that end with 'Handler'
+        for name, obj in inspect.getmembers(module):
+            if inspect.isclass(obj) and name.endswith('Handler'):
+                # Instantiate the handler and add it to the list
+                handlers.append(obj())
+    
+    return handlers
