@@ -4,7 +4,7 @@ import tempfile
 import os
 
 from telegram import Update
-from message_handler import MessageHandler
+from message_handler import delete_message
 
 class TwitterHandler:
     TWITTER_LINKS = ["https://x.com/", "https://twitter.com/"]
@@ -35,7 +35,7 @@ class TwitterHandler:
                         caption=f"{sender_name} {twitter_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
             except Exception:
                 pass
@@ -59,7 +59,7 @@ class TwitterHandler:
                             caption=f"{sender_name} {twitter_link}",
                             parse_mode="HTML"
                         )
-                        await MessageHandler.delete_message(update)
+                        await delete_message(update)
                         os.remove(output_path)
                         return
             except Exception:

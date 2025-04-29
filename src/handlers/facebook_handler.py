@@ -5,7 +5,7 @@ import os
 
 from telegram import Update
 
-from message_handler import MessageHandler
+from message_handler import delete_message
 
 
 class FacebookHandler:
@@ -37,7 +37,7 @@ class FacebookHandler:
                         caption=f"{sender_name} {fb_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
             except Exception:
                 pass
@@ -61,7 +61,7 @@ class FacebookHandler:
                             caption=f"{sender_name} {fb_link}",
                             parse_mode="HTML"
                         )
-                        await MessageHandler.delete_message(update)
+                        await delete_message(update)
                         os.remove(output_path)
                         return
             except Exception:

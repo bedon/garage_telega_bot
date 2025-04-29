@@ -7,7 +7,7 @@ import tempfile
 import requests
 from telegram import Update
 
-from message_handler import MessageHandler
+from message_handler import delete_message
 
 
 class InstagramHandler:
@@ -47,7 +47,7 @@ class InstagramHandler:
                         caption=f"{sender_name} {instagram_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
             except Exception:
                 pass
@@ -71,7 +71,7 @@ class InstagramHandler:
                             caption=f"{sender_name} {instagram_link}",
                             parse_mode="HTML"
                         )
-                        await MessageHandler.delete_message(update)
+                        await delete_message(update)
                         os.remove(output_path)
                         return
             except Exception:
@@ -91,7 +91,7 @@ class InstagramHandler:
                                 caption=f"{sender_name} {instagram_link}",
                                 parse_mode="HTML"
                             )
-                            await MessageHandler.delete_message(update)
+                            await delete_message(update)
                             return
                         elif data.get("media_type") == "image":
                             await update.message.chat.send_photo(
@@ -99,7 +99,7 @@ class InstagramHandler:
                                 caption=f"{sender_name} {instagram_link}",
                                 parse_mode="HTML"
                             )
-                            await MessageHandler.delete_message(update)
+                            await delete_message(update)
                             return
             except Exception:
                 pass
@@ -125,7 +125,7 @@ class InstagramHandler:
                         caption=f"{sender_name} {instagram_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
 
                 image_match = re.search(r'display_url":"([^"]+)"', response.text)
@@ -136,7 +136,7 @@ class InstagramHandler:
                         caption=f"{sender_name} {instagram_link}",
                         parse_mode="HTML"
                     )
-                    await MessageHandler.delete_message(update)
+                    await delete_message(update)
                     return
             except Exception:
                 pass

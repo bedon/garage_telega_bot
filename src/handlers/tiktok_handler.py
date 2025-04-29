@@ -1,7 +1,7 @@
 import requests
 from telegram import Update
 
-from message_handler import MessageHandler
+from message_handler import delete_message
 
 
 class TikTokHandler:
@@ -28,7 +28,7 @@ class TikTokHandler:
                     caption=f"{sender_name} {tiktok_link}",
                     parse_mode="HTML"
                 )
-                await MessageHandler.delete_message(update)
+                await delete_message(update)
                 return
             else:
                 # Пробуем альтернативный API
@@ -44,7 +44,7 @@ class TikTokHandler:
                             caption=f"{sender_name} {tiktok_link}",
                             parse_mode="HTML"
                         )
-                        await MessageHandler.delete_message(update)
+                        await delete_message(update)
                         return
                 except Exception:
                     pass
