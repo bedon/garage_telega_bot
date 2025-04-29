@@ -1,4 +1,4 @@
-.PHONY: setup run stop
+.PHONY: setup run stop test
 
 setup:
 	python3 -m venv venv
@@ -16,3 +16,6 @@ clean:
 
 dev:
 	python src/main.py
+
+test:
+	python -m pytest tests/ 
