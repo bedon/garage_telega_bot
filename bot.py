@@ -1,30 +1,28 @@
 import random
+import pkgutil
+import importlib
+import inspect
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-from handlers.instagram_handler import handle_instagram
-from handlers.tiktok_handler import handle_tiktok
+import handlers
 
 TOKEN = '7736052370:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
-TOKEN_TEST = '7259399630:AAEAnLGOBk7JkToma9Xh-i8oGoKDUmbGW2o'
-INSTAGRAM_LINKS = ["https://www.instagram.com/reel/", "https://www.instagram.com/p/"]
-TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
+TOKEN_TEST = '7259399630:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
 
 async def randomize_status(user_name: str, chat_id: int) -> str:
-    # Initialize chat state if not exists
     if not hasattr(randomize_status, "_chat_states"):
         randomize_status._chat_states = {}
-    
-    # Initialize state for this chat if not exists
+
     if chat_id not in randomize_status._chat_states:
         randomize_status._chat_states[chat_id] = {
             "last_user": None,
             "streak": 0
         }
-    
+
     chat_state = randomize_status._chat_states[chat_id]
-    
+
     if user_name == chat_state["last_user"]:
         chat_state["streak"] += 1
     else:
@@ -38,6 +36,19 @@ async def randomize_status(user_name: str, chat_id: int) -> str:
 
     return f"{status} {user_name}"
 
+all_handlers = []
+
+for loader, module_name, is_pkg in pkgutil.iter_modules(handlers.__path__):
+    if module_name == "message_handler":
+        continue
+
+    module = importlib.import_module(f"handlers.{module_name}")
+
+    for name, obj in inspect.getmembers(module, inspect.isclass):
+        if obj.__module__ == module.__name__:
+            if hasattr(obj, "can_handle") and hasattr(obj, "handle"):
+                all_handlers.append(obj)
+
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None or update.message.text is None:
         return
@@ -48,15 +59,10 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_prefix = await randomize_status(sender_name, chat_id)
 
     try:
-        # Перевірка Instagram посилань
-        if any(link in message for link in INSTAGRAM_LINKS):
-            await handle_instagram(update, message, user_prefix)
-            return
-
-        # Перевірка TikTok посилань
-        if any(link in message for link in TIKTOK_LINKS):
-            await handle_tiktok(update, message, user_prefix)
-            return
+        for h in all_handlers:
+            if h.can_handle(message):
+                await h.handle(update, message, user_prefix)
+                return
 
     except Exception as e:
         print(f"Помилка обробки повідомлення: {e}")
