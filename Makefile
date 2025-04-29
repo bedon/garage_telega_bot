@@ -8,7 +8,7 @@ run:
 	. venv/bin/activate && nohup python src/main.py > bot.log 2>&1 & echo $$! > bot.pid
 
 stop:
-	pkill -f bot.py
+	pkill -f main.py
 
 clean:
 	rm -rf venv
