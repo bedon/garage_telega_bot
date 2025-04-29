@@ -5,11 +5,8 @@ import inspect
 # Список всех обработчиков
 handlers = []
 
-# Автоматически ищем все модули в пакете handlers
+# Автоматически ищем все модули в пакете soc_network_handlers
 for loader, module_name, is_pkg in pkgutil.iter_modules(__path__):
-    if module_name == "message_handler":
-        continue  # Пропускаем message_handler.py, он не обработчик сообщений
-
     module = importlib.import_module(f"{__name__}.{module_name}")
 
     # Перебираем все классы в модуле

@@ -5,7 +5,7 @@ import os
 
 from telegram import Update
 
-from handlers.message_handler import MessageHandler
+from message_handler import MessageHandler
 
 
 class FacebookHandler:

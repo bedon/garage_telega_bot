@@ -6,7 +6,7 @@ import inspect
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-import handlers
+import soc_network_handlers
 
 TOKEN = '7736052370:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
 TOKEN_TEST = '7259399630:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
@@ -38,16 +38,12 @@ async def randomize_status(user_name: str, chat_id: int) -> str:
 
 all_handlers = []
 
-for loader, module_name, is_pkg in pkgutil.iter_modules(handlers.__path__):
-    if module_name == "message_handler":
-        continue
-
-    module = importlib.import_module(f"handlers.{module_name}")
+for loader, module_name, is_pkg in pkgutil.iter_modules(soc_network_handlers.__path__):
+    module = importlib.import_module(f"soc_network_handlers.{module_name}")
 
     for name, obj in inspect.getmembers(module, inspect.isclass):
         if obj.__module__ == module.__name__:
-            if hasattr(obj, "can_handle") and hasattr(obj, "handle"):
-                all_handlers.append(obj)
+            all_handlers.append(obj)
 
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None or update.message.text is None:
