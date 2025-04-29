@@ -18,4 +18,9 @@ dev:
 	python src/main.py
 
 test:
-	python -m pytest tests/ 
+	python -m pytest \
+		--cov=src \
+		--cov-report=term-missing \
+		--cov-report=html \
+		-v \
+		tests/ 
