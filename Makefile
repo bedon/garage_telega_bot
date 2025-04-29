@@ -1,4 +1,4 @@
-.PHONY: setup run stop test
+.PHONY: setup run stop test clean clean-all
 
 setup:
 	python3 -m venv venv
@@ -12,7 +12,19 @@ stop:
 
 clean:
 	rm -rf venv
-	rm -f bot.log bot.pid 
+	rm -f bot.log bot.pid
+	rm -rf .pytest_cache
+	rm -rf .coverage
+	rm -rf htmlcov
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	find . -type f -name "*.pyo" -delete
+	find . -type f -name "*.pyd" -delete
+
+clean-all: clean
+	rm -rf venv
+	find . -type d -name ".mypy_cache" -exec rm -rf {} +
+	find . -type d -name ".ruff_cache" -exec rm -rf {} +
 
 dev:
 	python src/main.py
