@@ -2,6 +2,8 @@ import random
 import pkgutil
 import importlib
 import inspect
+import os
+from dotenv import load_dotenv
 from utils import randomize_status
 
 from telegram import Update
@@ -12,9 +14,14 @@ from handlers.facebook_handler import FacebookHandler
 from handlers.twitter_handler import TwitterHandler
 from handlers.tiktok_handler import TikTokHandler
 
-TOKEN = '7736052370:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
-TOKEN_TEST = '7259399630:AAEDIWcJAijCvzaoNLtNhKXEla_7orW93Kc'
+# Load environment variables
+load_dotenv()
+TOKEN = os.getenv('TELEGRAM_TOKEN')
 
+if not TOKEN:
+    raise ValueError("TELEGRAM_TOKEN environment variable is not set")
+
+# Initialize all handlers
 all_handlers = [
     InstagramHandler(),
     FacebookHandler(),
@@ -32,15 +39,17 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_prefix = await randomize_status(sender_name, chat_id)
 
     try:
+        # Try to handle the message with each handler
         for handler_instance in all_handlers:
             if handler_instance.can_handle(message):
                 await handler_instance.handle(update, message, user_prefix)
                 return
 
     except Exception as e:
-        print(f"Помилка обробки повідомлення: {e}")
+        print(f"Error processing message: {e}")
 
 def main():
+    # Initialize and run the bot
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
     app.run_polling()

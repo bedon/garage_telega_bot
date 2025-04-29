@@ -30,7 +30,7 @@ class TikTokHandler:
                 await delete_message(update)
                 return
             else:
-                # Пробуем альтернативный API
+                # Try alternative API
                 try:
                     api_url = "https://api.tiktokdownload.com/api"
                     params = {"url": message}
@@ -48,15 +48,15 @@ class TikTokHandler:
                 except Exception:
                     pass
 
-                # Если оба API не сработали
+                # If both APIs failed
                 await update.message.chat.send_message(
-                    f"{sender_name} {tiktok_link}\n\n[Не вдалося отримати відео]",
+                    f"{sender_name} {tiktok_link}\n\n[Failed to get video]",
                     parse_mode="HTML"
                 )
 
         except Exception as e:
-            print(f"Помилка обробки TikTok відео: {e}")
+            print(f"Error processing TikTok video: {e}")
             await update.message.chat.send_message(
-                f"{sender_name} {tiktok_link}\n\n[Помилка при завантаженні відео]",
+                f"{sender_name} {tiktok_link}\n\n[Error downloading video]",
                 parse_mode="HTML"
             )

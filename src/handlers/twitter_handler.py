@@ -17,7 +17,7 @@ class TwitterHandler:
         try:
             twitter_link = f'<a href="{message}">🐦 From Twitter (X)</a>'
 
-            # Попытка скачать через yt-dlp напрямую в память
+            # Try to download using yt-dlp directly to memory
             try:
                 process = subprocess.run(
                     ["yt-dlp", "-o", "-", "--format", "best", message],
@@ -39,7 +39,7 @@ class TwitterHandler:
             except Exception:
                 pass
 
-            # Попытка скачать через временный файл
+            # Try to download using temporary file
             try:
                 temp_dir = tempfile.mkdtemp()
                 output_path = os.path.join(temp_dir, "twitter_video.mp4")
@@ -64,26 +64,26 @@ class TwitterHandler:
             except Exception:
                 pass
 
-            # Если ничего не получилось
+            # If all attempts failed
             await update.message.chat.send_message(
                 f"{sender_name} {twitter_link}\n\n"
-                f"Не вдалося автоматично скачати відео.\n"
-                f"Спробуйте самостійно через:\n\n"
+                f"Failed to automatically download the video.\n"
+                f"Try downloading manually through:\n\n"
                 f"1. https://ssstwitter.com/\n"
                 f"2. https://twdown.net/\n"
                 f"3. https://twitsave.com/\n\n"
-                f"Оригінальне посилання: {message}",
+                f"Original link: {message}",
                 parse_mode="HTML"
             )
 
         except Exception as e:
-            print(f"Помилка обробки Twitter відео: {e}")
+            print(f"Error processing Twitter video: {e}")
             await update.message.chat.send_message(
                 f"{sender_name} {twitter_link}\n\n"
-                f"Помилка при обробці відео. Спробуйте самостійно через:\n\n"
+                f"Error processing video. Try downloading manually through:\n\n"
                 f"1. https://ssstwitter.com/\n"
                 f"2. https://twdown.net/\n"
                 f"3. https://twitsave.com/\n\n"
-                f"Оригінальне посилання: {message}",
+                f"Original link: {message}",
                 parse_mode="HTML"
             )
