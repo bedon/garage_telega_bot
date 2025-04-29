@@ -7,18 +7,17 @@ import tempfile
 import requests
 from telegram import Update
 
-from message_handler import delete_message
+from utils import delete_message
 
 
 class InstagramHandler:
-    INSTAGRAM_LINKS = ["https://www.instagram.com/reel/", "https://www.instagram.com/p/"]
+    def __init__(self):
+        self.INSTAGRAM_LINKS = ["https://www.instagram.com/reel/", "https://www.instagram.com/p/"]
 
-    @staticmethod
-    def can_handle(message: str) -> bool:
-        return any(link in message for link in InstagramHandler.INSTAGRAM_LINKS)
+    def can_handle(self, message: str) -> bool:
+        return any(link in message for link in self.INSTAGRAM_LINKS)
 
-    @staticmethod
-    async def handle(update: Update, message: str, sender_name: str) -> None:
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
             instagram_id_match = re.search(r'/(?:p|reel)/([^/?]+)', message)
             if not instagram_id_match:

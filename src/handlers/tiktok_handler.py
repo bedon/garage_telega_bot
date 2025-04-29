@@ -1,18 +1,17 @@
 import requests
 from telegram import Update
 
-from message_handler import delete_message
+from utils import delete_message
 
 
 class TikTokHandler:
-    TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
+    def __init__(self):
+        self.TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
 
-    @staticmethod
-    def can_handle(message: str) -> bool:
-        return any(link in message for link in TikTokHandler.TIKTOK_LINKS)
+    def can_handle(self, message: str) -> bool:
+        return any(link in message for link in self.TIKTOK_LINKS)
 
-    @staticmethod
-    async def handle(update: Update, message: str, sender_name: str) -> None:
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
         tiktok_link = f'<a href="{message}">🎵 From TikTok</a>'
 
         try:

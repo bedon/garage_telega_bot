@@ -4,17 +4,16 @@ import tempfile
 import os
 
 from telegram import Update
-from message_handler import delete_message
+from utils import delete_message
 
 class TwitterHandler:
-    TWITTER_LINKS = ["https://x.com/", "https://twitter.com/"]
+    def __init__(self):
+        self.TWITTER_LINKS = ["https://x.com/", "https://twitter.com/"]
 
-    @staticmethod
-    def can_handle(message: str) -> bool:
-        return any(link in message for link in TwitterHandler.TWITTER_LINKS)
+    def can_handle(self, message: str) -> bool:
+        return any(link in message for link in self.TWITTER_LINKS)
 
-    @staticmethod
-    async def handle(update: Update, message: str, sender_name: str) -> None:
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
             twitter_link = f'<a href="{message}">🐦 From Twitter (X)</a>'
 

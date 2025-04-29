@@ -5,18 +5,17 @@ import os
 
 from telegram import Update
 
-from message_handler import delete_message
+from utils import delete_message
 
 
 class FacebookHandler:
-    FACEBOOK_LINKS = ["https://www.facebook.com/reel/", "https://fb.watch/"]
+    def __init__(self):
+        self.FACEBOOK_LINKS = ["https://www.facebook.com/reel/", "https://fb.watch/"]
 
-    @staticmethod
-    def can_handle(message: str) -> bool:
-        return any(link in message for link in FacebookHandler.FACEBOOK_LINKS)
+    def can_handle(self, message: str) -> bool:
+        return any(link in message for link in self.FACEBOOK_LINKS)
 
-    @staticmethod
-    async def handle(update: Update, message: str, sender_name: str) -> None:
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
             fb_link = f'<a href="{message}">📘 From Facebook</a>'
 
