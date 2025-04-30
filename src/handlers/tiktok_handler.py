@@ -1,8 +1,6 @@
-import requests
+import aiohttp
 from telegram import Update
-
 from utils import delete_message
-
 
 class TikTokHandler:
     def __init__(self):
@@ -15,10 +13,12 @@ class TikTokHandler:
         tiktok_link = f'<a href="{message}">🎵 From TikTok</a>'
 
         try:
+            # Try primary API
             api_url = "https://tikwm.com/api/"
             params = {"url": message}
-            response = requests.get(api_url, params=params, timeout=10)
-            data = response.json()
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, params=params, timeout=10) as response:
+                    data = await response.json()
 
             if data.get("code") == 0 and data.get("data", {}).get("play"):
                 video_url = data["data"]["play"]
@@ -29,30 +29,31 @@ class TikTokHandler:
                 )
                 await delete_message(update)
                 return
-            else:
-                # Try alternative API
-                try:
-                    api_url = "https://api.tiktokdownload.com/api"
-                    params = {"url": message}
-                    response = requests.get(api_url, params=params, timeout=15)
-                    data = response.json()
 
-                    if data.get("success") and data.get("video_url"):
-                        await update.message.chat.send_video(
-                            video=data["video_url"],
-                            caption=f"{sender_name} {tiktok_link}",
-                            parse_mode="HTML"
-                        )
-                        await delete_message(update)
-                        return
-                except Exception:
-                    pass
+            # Try alternative API
+            try:
+                api_url_alt = "https://api.tiktokdownload.com/api"
+                params_alt = {"url": message}
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(api_url_alt, params=params_alt, timeout=15) as response:
+                        data_alt = await response.json()
 
-                # If both APIs failed
-                await update.message.chat.send_message(
-                    f"{sender_name} {tiktok_link}\n\n[Failed to get video]",
-                    parse_mode="HTML"
-                )
+                if data_alt.get("success") and data_alt.get("video_url"):
+                    await update.message.chat.send_video(
+                        video=data_alt["video_url"],
+                        caption=f"{sender_name} {tiktok_link}",
+                        parse_mode="HTML"
+                    )
+                    await delete_message(update)
+                    return
+            except Exception:
+                pass
+
+            # If both APIs fail
+            await update.message.chat.send_message(
+                f"{sender_name} {tiktok_link}\n\n[Failed to get video]",
+                parse_mode="HTML"
+            )
 
         except Exception as e:
             print(f"Error processing TikTok video: {e}")
