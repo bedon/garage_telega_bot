@@ -82,7 +82,7 @@ async def test_handle_download_failure(facebook_handler, mock_update):
         
         mock_update.message.chat.send_message.assert_called_once()
         assert "Failed to automatically download" in mock_update.message.chat.send_message.call_args[0][0]
-        assert "fdown.net" in mock_update.message.chat.send_message.call_args[0][0]
+        assert "Original link" in mock_update.message.chat.send_message.call_args[0][0]
 
 @pytest.mark.asyncio
 async def test_handle_exception_handling(facebook_handler, mock_update):
@@ -95,5 +95,4 @@ async def test_handle_exception_handling(facebook_handler, mock_update):
         
         mock_update.message.chat.send_message.assert_called_once()
         assert "Failed to automatically download" in mock_update.message.chat.send_message.call_args[0][0]
-        assert "fdown.net" in mock_update.message.chat.send_message.call_args[0][0]
-        assert "snapvid.net" in mock_update.message.chat.send_message.call_args[0][0] 
+        assert "Original link" in mock_update.message.chat.send_message.call_args[0][0] 

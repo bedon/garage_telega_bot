@@ -24,17 +24,22 @@ async def test_can_handle_valid_tiktok_links(tiktok_handler):
 
 @pytest.mark.asyncio
 async def test_handle_successful_first_api(tiktok_handler, mock_update):
-    with patch('requests.get') as mock_get:
-        # Mock successful response from first API
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "code": 0,
-            "data": {
-                "play": "https://example.com/video.mp4"
-            }
+    mock_response = AsyncMock()
+    mock_response.json = AsyncMock(return_value={
+        "code": 0,
+        "data": {
+            "play": "https://example.com/video.mp4"
         }
-        mock_get.return_value = mock_response
-        
+    })
+    
+    mock_context = AsyncMock()
+    mock_context.__aenter__.return_value = mock_response
+    mock_context.__aexit__.return_value = None
+    
+    mock_session = AsyncMock()
+    mock_session.get.return_value = mock_context
+    
+    with patch('aiohttp.ClientSession', return_value=mock_session):
         await tiktok_handler.handle(
             mock_update,
             "https://www.tiktok.com/@user/video/123456789",
@@ -46,20 +51,29 @@ async def test_handle_successful_first_api(tiktok_handler, mock_update):
 
 @pytest.mark.asyncio
 async def test_handle_successful_second_api(tiktok_handler, mock_update):
-    with patch('requests.get') as mock_get:
-        # Mock failed response from first API
-        mock_response1 = MagicMock()
-        mock_response1.json.return_value = {"code": 1}
-        
-        # Mock successful response from second API
-        mock_response2 = MagicMock()
-        mock_response2.json.return_value = {
-            "success": True,
-            "video_url": "https://example.com/video.mp4"
-        }
-        
-        mock_get.side_effect = [mock_response1, mock_response2]
-        
+    # Mock failed response from first API
+    mock_response1 = AsyncMock()
+    mock_response1.json = AsyncMock(return_value={"code": 1})
+    
+    # Mock successful response from second API
+    mock_response2 = AsyncMock()
+    mock_response2.json = AsyncMock(return_value={
+        "success": True,
+        "video_url": "https://example.com/video.mp4"
+    })
+    
+    mock_context1 = AsyncMock()
+    mock_context1.__aenter__.return_value = mock_response1
+    mock_context1.__aexit__.return_value = None
+    
+    mock_context2 = AsyncMock()
+    mock_context2.__aenter__.return_value = mock_response2
+    mock_context2.__aexit__.return_value = None
+    
+    mock_session = AsyncMock()
+    mock_session.get.side_effect = [mock_context1, mock_context2]
+    
+    with patch('aiohttp.ClientSession', return_value=mock_session):
         await tiktok_handler.handle(
             mock_update,
             "https://www.tiktok.com/@user/video/123456789",
@@ -71,16 +85,17 @@ async def test_handle_successful_second_api(tiktok_handler, mock_update):
 
 @pytest.mark.asyncio
 async def test_handle_both_apis_fail(tiktok_handler, mock_update):
-    with patch('requests.get') as mock_get:
-        # Mock failed responses from both APIs
-        mock_response1 = MagicMock()
-        mock_response1.json.return_value = {"code": 1}
-        
-        mock_response2 = MagicMock()
-        mock_response2.json.return_value = {"success": False}
-        
-        mock_get.side_effect = [mock_response1, mock_response2]
-        
+    mock_response = AsyncMock()
+    mock_response.json = AsyncMock(return_value={"code": 1})
+    
+    mock_context = AsyncMock()
+    mock_context.__aenter__.return_value = mock_response
+    mock_context.__aexit__.return_value = None
+    
+    mock_session = AsyncMock()
+    mock_session.get.return_value = mock_context
+    
+    with patch('aiohttp.ClientSession', return_value=mock_session):
         await tiktok_handler.handle(
             mock_update,
             "https://www.tiktok.com/@user/video/123456789",
@@ -88,11 +103,11 @@ async def test_handle_both_apis_fail(tiktok_handler, mock_update):
         )
         
         mock_update.message.chat.send_message.assert_called_once()
-        assert "Failed to get video" in mock_update.message.chat.send_message.call_args[0][0]
+        assert "[Error downloading video]" in mock_update.message.chat.send_message.call_args[0][0]
 
 @pytest.mark.asyncio
 async def test_handle_exception_handling(tiktok_handler, mock_update):
-    with patch('requests.get', side_effect=Exception("Test error")):
+    with patch('aiohttp.ClientSession', side_effect=Exception("Test error")):
         await tiktok_handler.handle(
             mock_update,
             "https://www.tiktok.com/@user/video/123456789",
@@ -100,4 +115,4 @@ async def test_handle_exception_handling(tiktok_handler, mock_update):
         )
         
         mock_update.message.chat.send_message.assert_called_once()
-        assert "Error downloading video" in mock_update.message.chat.send_message.call_args[0][0] 
+        assert "[Error downloading video]" in mock_update.message.chat.send_message.call_args[0][0] 

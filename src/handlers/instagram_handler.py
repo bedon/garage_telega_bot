@@ -31,11 +31,14 @@ class InstagramHandler:
                 api_url = f"https://instagram-stories-api.vercel.app/api/post?url={message}"
                 async with aiohttp.ClientSession() as session:
                     async with session.get(api_url, timeout=20) as response:
+                        print(f"API response status: {response.status}")
                         if response.status == 200:
                             data = await response.json()
+                            print(f"API response data: {data}")
 
                             if data.get("error") is None and data.get("download_url"):
                                 if data.get("media_type") == "video":
+                                    print(f"Sending video with URL: {data['download_url']}")
                                     await update.message.chat.send_video(
                                         video=data["download_url"],
                                         caption=f"{sender_name} {instagram_link}",
@@ -51,7 +54,7 @@ class InstagramHandler:
                                     )
                                     await delete_message(update)
                                     return
-            except Exception:
+            except Exception as e:
                 pass
 
             # Final fallback: try parsing HTML source directly
