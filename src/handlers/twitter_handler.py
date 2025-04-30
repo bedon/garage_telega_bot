@@ -68,10 +68,10 @@ class TwitterHandler:
             await update.message.chat.send_message(
                 f"{sender_name} {twitter_link}\n\n"
                 f"Failed to automatically download the video.\n"
-                f"Try downloading manually through:\n\n"
-                f"1. https://ssstwitter.com/\n"
-                f"2. https://twdown.net/\n"
-                f"3. https://twitsave.com/\n\n"
+                f"Watch by original link:\n\n"
+                # f"1. https://ssstwitter.com/\n"
+                # f"2. https://twdown.net/\n"
+                # f"3. https://twitsave.com/\n\n"
                 f"Original link: {message}",
                 parse_mode="HTML"
             )
@@ -80,10 +80,10 @@ class TwitterHandler:
             print(f"Error processing Twitter video: {e}")
             await update.message.chat.send_message(
                 f"{sender_name} {twitter_link}\n\n"
-                f"Error processing video. Try downloading manually through:\n\n"
-                f"1. https://ssstwitter.com/\n"
-                f"2. https://twdown.net/\n"
-                f"3. https://twitsave.com/\n\n"
+                f"Error processing video. Watch by original link:\n\n"
+                # f"1. https://ssstwitter.com/\n"
+                # f"2. https://twdown.net/\n"
+                # f"3. https://twitsave.com/\n\n"
                 f"Original link: {message}",
                 parse_mode="HTML"
             )

@@ -92,10 +92,10 @@ class InstagramHandler:
             # If all methods fail
             await update.message.chat.send_message(
                 f"{sender_name} {instagram_link}\n\n"
-                f"Failed to automatically download the video. Try these services:\n\n"
-                f"1. https://saveinsta.app/instagram-video-downloader/{instagram_id}\n"
-                f"2. https://www.y2mate.com/instagram/{instagram_id}\n"
-                f"3. https://sssinstagram.com/\n\n"
+                f"Failed to automatically download the video. Watch by original link :\n\n"
+                # f"1. https://saveinsta.app/instagram-video-downloader/{instagram_id}\n"
+                # f"2. https://www.y2mate.com/instagram/{instagram_id}\n"
+                # f"3. https://sssinstagram.com/\n\n"
                 f"Original link: {message}",
                 parse_mode="HTML"
             )
