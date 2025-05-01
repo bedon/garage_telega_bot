@@ -3,7 +3,7 @@ import os
 import tempfile
 import subprocess
 from pathlib import Path
-import io
+import aiohttp
 
 from telegram import Update
 
@@ -36,6 +36,15 @@ class InstagramHandler(BaseHandler):
     def can_handle(self, message: str) -> bool:
         return any(link in message.lower() for link in self.INSTAGRAM_LINKS)
 
+    async def is_dd_link_working(self, dd_link: str) -> bool:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(dd_link, timeout=10, headers={"User-Agent": self.USER_AGENT}) as resp:
+                    if resp.status != 200:
+                        return False
+        except Exception:
+            return False
+
     async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
             # Extract post ID
@@ -47,6 +56,19 @@ class InstagramHandler(BaseHandler):
                 return
 
             instagram_id = instagram_id_match.group(1)
+
+            # Try ddinstagram link first
+            dd_message = message.replace("instagram", "ddinstagram")
+
+            if await self.is_dd_link_working(dd_message):
+                instagram_link = f'<a href="{dd_message}">📸 Instagram</a>'
+                await update.message.chat.send_message(
+                    self._format_caption(sender_name, instagram_link),
+                    parse_mode="HTML"
+                )
+                await delete_message(update)
+                return
+
             instagram_link = f'<a href="{message}">📸 Instagram</a>'
             
             # Check for required tools
@@ -185,11 +207,7 @@ class InstagramHandler(BaseHandler):
             ]
             
             compression_process = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
-            
-            if compression_process.returncode == 0 and compressed_path.exists():
-                return compressed_path
-            else:
-                return None
+            return compressed_path if compression_process.returncode == 0 else None
         except Exception:
             return None
 
