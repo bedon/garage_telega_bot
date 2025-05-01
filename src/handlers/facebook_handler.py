@@ -4,11 +4,11 @@ import tempfile
 import os
 
 from telegram import Update
-
 from utils import delete_message
+from . import BaseHandler
 
 
-class FacebookHandler:
+class FacebookHandler(BaseHandler):
     def __init__(self):
         self.FACEBOOK_LINKS = ["https://www.facebook.com/reel/", "https://fb.watch/"]
 
@@ -17,7 +17,7 @@ class FacebookHandler:
 
     async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
-            fb_link = f'<a href="{message}">📘 From Facebook</a>'
+            fb_link = f'<a href="{message}">📘 Facebook</a>'
 
             # Try to download using yt-dlp directly to memory
             try:
@@ -33,7 +33,7 @@ class FacebookHandler:
 
                     await update.message.chat.send_video(
                         video=video_bytes,
-                        caption=f"{sender_name} {fb_link}",
+                        caption=self._format_caption(sender_name, fb_link),
                         parse_mode="HTML"
                     )
                     await delete_message(update)
@@ -57,7 +57,7 @@ class FacebookHandler:
                     with open(output_path, "rb") as video_file:
                         await update.message.chat.send_video(
                             video=video_file,
-                            caption=f"{sender_name} {fb_link}",
+                            caption=self._format_caption(sender_name, fb_link),
                             parse_mode="HTML"
                         )
                         await delete_message(update)
@@ -68,7 +68,7 @@ class FacebookHandler:
 
             # If download failed
             await update.message.chat.send_message(
-                f"{sender_name} {fb_link}\n\n"
+                self._format_caption(sender_name, fb_link) + "\n\n"
                 f"Failed to automatically download the video.\n"
                 f"Watch by original link:\n\n"
                 # f"1. https://fdown.net/\n"
@@ -80,7 +80,7 @@ class FacebookHandler:
         except Exception as e:
             print(f"Error processing Facebook video: {e}")
             await update.message.chat.send_message(
-                f"{sender_name} <a href='{message}'>📘 From Facebook</a>\n\n"
+                self._format_caption(sender_name, fb_link) + "\n\n"
                 f"Error processing video. Watch by original link:\n\n"
                 # f"1. https://fdown.net/\n"
                 # f"2. https://snapvid.net/\n\n"

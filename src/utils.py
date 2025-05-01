@@ -2,7 +2,7 @@ import random
 import importlib
 import pkgutil
 import inspect
-from telegram import Update
+from telegram import Update, User
 
 async def delete_message(update: Update) -> None:
     try:
@@ -10,7 +10,7 @@ async def delete_message(update: Update) -> None:
     except Exception as e:
         print(f"Failed to delete message: {e}")
 
-async def randomize_status(user_name: str, chat_id: int) -> str:
+async def randomize_status(user: User, chat_id: int) -> str:
     # Initialize chat states if not exists
     if not hasattr(randomize_status, "_chat_states"):
         randomize_status._chat_states = {}
@@ -18,26 +18,26 @@ async def randomize_status(user_name: str, chat_id: int) -> str:
     # Initialize or get chat state for current chat
     if chat_id not in randomize_status._chat_states:
         randomize_status._chat_states[chat_id] = {
-            "last_user": None,
+            "last_user": user.id,
             "streak": 0
         }
 
     chat_state = randomize_status._chat_states[chat_id]
 
     # Update streak counter
-    if user_name == chat_state["last_user"]:
+    if user.id == chat_state["last_user"]:
         chat_state["streak"] += 1
     else:
-        chat_state["last_user"] = user_name
+        chat_state["last_user"] = user.id
         chat_state["streak"] = 1
 
     # Determine status based on streak
     if chat_state["streak"] >= 3:
         status = "🌈 GAY SPAMMER 💦💦💦\n"
     else:
-        status = random.choice(["👑 NICE GUY 👑\n", "😎 CHILL GUY 🚬\n", "COOL DUDE 🤘\n", "FUNNY DUDE 🤣\n"])
+        status = random.choice(["👑 NICE GUY 👑", "😎 CHILL GUY 🚬", "COOL DUDE 🤘", "FUNNY DUDE 🤣"])
 
-    return f"{status} {user_name}"
+    return f"by <a href=\"tg://user?id={user.id}\">{user.full_name}</a> {status}\n"
 
 def load_handlers():
     """
@@ -57,7 +57,7 @@ def load_handlers():
         
         # Find all classes in the module that end with 'Handler'
         for name, obj in inspect.getmembers(module):
-            if inspect.isclass(obj) and name.endswith('Handler'):
+            if inspect.isclass(obj) and name.endswith('Handler') and obj.__module__ != 'handlers':
                 # Instantiate the handler and add it to the list
                 handlers.append(obj())
     

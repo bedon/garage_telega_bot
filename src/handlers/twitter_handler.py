@@ -5,8 +5,9 @@ import os
 
 from telegram import Update
 from utils import delete_message
+from . import BaseHandler
 
-class TwitterHandler:
+class TwitterHandler(BaseHandler):
     def __init__(self):
         self.TWITTER_LINKS = ["https://x.com/", "https://twitter.com/"]
 
@@ -15,7 +16,7 @@ class TwitterHandler:
 
     async def handle(self, update: Update, message: str, sender_name: str) -> None:
         try:
-            twitter_link = f'<a href="{message}">🐦 From Twitter (X)</a>'
+            twitter_link = f'<a href="{message}">🐦 Twitter (X)</a>'
 
             # Try to download using yt-dlp directly to memory
             try:
@@ -31,7 +32,7 @@ class TwitterHandler:
 
                     await update.message.chat.send_video(
                         video=video_bytes,
-                        caption=f"{sender_name} {twitter_link}",
+                        caption=self._format_caption(sender_name, twitter_link),
                         parse_mode="HTML"
                     )
                     await delete_message(update)
@@ -55,7 +56,7 @@ class TwitterHandler:
                     with open(output_path, "rb") as video_file:
                         await update.message.chat.send_video(
                             video=video_file,
-                            caption=f"{sender_name} {twitter_link}",
+                            caption=self._format_caption(sender_name, twitter_link),
                             parse_mode="HTML"
                         )
                         await delete_message(update)
@@ -66,7 +67,7 @@ class TwitterHandler:
 
             # If all attempts failed
             await update.message.chat.send_message(
-                f"{sender_name} {twitter_link}\n\n"
+                self._format_caption(sender_name, twitter_link) + "\n\n"
                 f"Failed to automatically download the video.\n"
                 f"Watch by original link:\n\n"
                 # f"1. https://ssstwitter.com/\n"
@@ -79,7 +80,7 @@ class TwitterHandler:
         except Exception as e:
             print(f"Error processing Twitter video: {e}")
             await update.message.chat.send_message(
-                f"{sender_name} {twitter_link}\n\n"
+                self._format_caption(sender_name, twitter_link) + "\n\n"
                 f"Error processing video. Watch by original link:\n\n"
                 # f"1. https://ssstwitter.com/\n"
                 # f"2. https://twdown.net/\n"

@@ -1,8 +1,10 @@
 import aiohttp
+
 from telegram import Update
 from utils import delete_message
+from . import BaseHandler
 
-class TikTokHandler:
+class TikTokHandler(BaseHandler):
     def __init__(self):
         self.TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
 
@@ -10,7 +12,7 @@ class TikTokHandler:
         return any(link in message for link in self.TIKTOK_LINKS)
 
     async def handle(self, update: Update, message: str, sender_name: str) -> None:
-        tiktok_link = f'<a href="{message}">🎵 From TikTok</a>'
+        tiktok_link = f'<a href="{message}">🎵 TikTok</a>'
 
         try:
             # Try primary API
@@ -24,7 +26,7 @@ class TikTokHandler:
                 video_url = data["data"]["play"]
                 await update.message.chat.send_video(
                     video=video_url,
-                    caption=f"{sender_name} {tiktok_link}",
+                    caption=self._format_caption(sender_name, tiktok_link),
                     parse_mode="HTML"
                 )
                 await delete_message(update)
@@ -41,7 +43,7 @@ class TikTokHandler:
                 if data_alt.get("success") and data_alt.get("video_url"):
                     await update.message.chat.send_video(
                         video=data_alt["video_url"],
-                        caption=f"{sender_name} {tiktok_link}",
+                        caption=self._format_caption(sender_name, tiktok_link),
                         parse_mode="HTML"
                     )
                     await delete_message(update)
@@ -51,13 +53,13 @@ class TikTokHandler:
 
             # If both APIs fail
             await update.message.chat.send_message(
-                f"{sender_name} {tiktok_link}\n\n[Failed to get video]",
+                self._format_caption(sender_name, tiktok_link) + "\n\n[Failed to get video]",
                 parse_mode="HTML"
             )
 
         except Exception as e:
             print(f"Error processing TikTok video: {e}")
             await update.message.chat.send_message(
-                f"{sender_name} {tiktok_link}\n\n[Error downloading video]",
+                self._format_caption(sender_name, tiktok_link) + "\n\n[Error downloading video]",
                 parse_mode="HTML"
             )
