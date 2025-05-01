@@ -5,10 +5,10 @@ setup:
 	. venv/bin/activate && pip install -r requirements.txt
 
 run:
-	. venv/bin/activate && nohup python src/main.py > bot.log 2>&1 & echo $$! > bot.pid
+	. venv/bin/activate && nohup python src/main.py > bot.log 2>&1 & echo $$! > bot_dude.pid
 
 stop:
-	pkill -f main.py
+	kill $(cat bot_dude.pid)
 
 clean:
 	rm -rf venv
