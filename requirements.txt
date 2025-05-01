@@ -5,3 +5,5 @@ python-dotenv==1.0.0
 pytest==8.0.0
 pytest-asyncio==0.23.5
 pytest-cov==4.1.0
+instaloader>=4.10.0  # Optional but recommended as an additional method
+ffmpeg-python>=0.2.0  # Optional: for additional media processing capabilities

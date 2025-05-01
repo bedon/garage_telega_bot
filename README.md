@@ -20,6 +20,21 @@ The project uses the following Python packages:
 - `yt-dlp>=2025.3.31` - For downloading videos from various platforms
 - `python-dotenv==1.0.0` - For managing environment variables
 
+### System Dependencies
+
+FFmpeg is required for video processing. Install it using one of the following commands based on your operating system:
+
+```bash
+# On Ubuntu/Debian
+sudo apt-get install ffmpeg
+
+# On CentOS/RHEL
+sudo yum install ffmpeg
+
+# On macOS with Homebrew
+brew install ffmpeg
+```
+
 ## Setup
 
 1. Clone the repository:
