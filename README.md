@@ -11,15 +11,6 @@ A Telegram bot that automatically downloads and forwards videos from various soc
 - Customizable user status messages
 - Automatic handler discovery and loading
 
-## Dependencies
-
-The project uses the following Python packages:
-
-- `python-telegram-bot==20.7` - For Telegram bot functionality
-- `requests>=2.31.0` - For making HTTP requests
-- `yt-dlp>=2025.3.31` - For downloading videos from various platforms
-- `python-dotenv==1.0.0` - For managing environment variables
-
 ### System Dependencies
 
 FFmpeg is required for video processing. Install it using one of the following commands based on your operating system:
