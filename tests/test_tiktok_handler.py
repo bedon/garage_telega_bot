@@ -47,7 +47,7 @@ async def test_handle_successful_first_api(tiktok_handler, mock_update):
         )
         
         mock_update.message.chat.send_video.assert_called_once()
-        assert "From TikTok" in mock_update.message.chat.send_video.call_args[1]['caption']
+        assert "TikTok" in mock_update.message.chat.send_video.call_args[1]['caption']
 
 @pytest.mark.asyncio
 async def test_handle_successful_second_api(tiktok_handler, mock_update):
@@ -81,7 +81,7 @@ async def test_handle_successful_second_api(tiktok_handler, mock_update):
         )
         
         mock_update.message.chat.send_video.assert_called_once()
-        assert "From TikTok" in mock_update.message.chat.send_video.call_args[1]['caption']
+        assert "TikTok" in mock_update.message.chat.send_video.call_args[1]['caption']
 
 @pytest.mark.asyncio
 async def test_handle_both_apis_fail(tiktok_handler, mock_update):

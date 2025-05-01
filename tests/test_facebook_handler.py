@@ -36,7 +36,7 @@ async def test_handle_successful_memory_download(facebook_handler, mock_update):
         )
         
         mock_update.message.chat.send_video.assert_called_once()
-        assert "From Facebook" in mock_update.message.chat.send_video.call_args[1]['caption']
+        assert "Facebook" in mock_update.message.chat.send_video.call_args[1]['caption']
 
 @pytest.mark.asyncio
 async def test_handle_successful_file_download(facebook_handler, mock_update):
@@ -61,7 +61,7 @@ async def test_handle_successful_file_download(facebook_handler, mock_update):
         )
         
         mock_update.message.chat.send_video.assert_called_once()
-        assert "From Facebook" in mock_update.message.chat.send_video.call_args[1]['caption']
+        assert "Facebook" in mock_update.message.chat.send_video.call_args[1]['caption']
 
 @pytest.mark.asyncio
 async def test_handle_download_failure(facebook_handler, mock_update):

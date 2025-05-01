@@ -3,13 +3,15 @@ import os
 import tempfile
 import subprocess
 from pathlib import Path
+import io
 
 from telegram import Update
 
 from utils import delete_message
+from . import BaseHandler
 
 
-class InstagramHandler:
+class InstagramHandler(BaseHandler):
     def __init__(self):
         self.INSTAGRAM_LINKS = ["instagram.com/reel/", "instagram.com/p/"]
         # Check if yt-dlp is available
@@ -40,17 +42,17 @@ class InstagramHandler:
             instagram_id_match = re.search(r'/(?:p|reel)/([^/?]+)', message)
             if not instagram_id_match:
                 await update.message.chat.send_message(
-                    f"{sender_name} 📸 From Instagram\n\n[Invalid Instagram link] {message}"
+                    f"{sender_name} 📸 Instagram\n\n[Invalid Instagram link] {message}"
                 )
                 return
 
             instagram_id = instagram_id_match.group(1)
-            instagram_link = f'<a href="{message}">📸 From Instagram</a>'
+            instagram_link = f'<a href="{message}">📸 Instagram</a>'
             
             # Check for required tools
             if not self.yt_dlp_available:
                 await update.message.chat.send_message(
-                    f"{sender_name} {instagram_link}\n\n"
+                    self._format_caption(sender_name, instagram_link) + "\n\n"
                     f"Error: yt-dlp is not installed. Please install it with: pip install yt-dlp",
                     parse_mode="HTML"
                 )
@@ -58,7 +60,7 @@ class InstagramHandler:
                 
             if not self.ffmpeg_available:
                 await update.message.chat.send_message(
-                    f"{sender_name} {instagram_link}\n\n"
+                    self._format_caption(sender_name, instagram_link) + "\n\n"
                     f"Error: ffmpeg is not installed. Please install ffmpeg for video compression.",
                     parse_mode="HTML"
                 )
@@ -107,7 +109,7 @@ class InstagramHandler:
                             if file_size_kb <= self.MAX_FILE_SIZE_KB:
                                 await update.message.chat.send_video(
                                     video=open(output_path, 'rb'),
-                                    caption=f"{sender_name} {instagram_link}",
+                                    caption=self._format_caption(sender_name, instagram_link),
                                     parse_mode="HTML",
                                     supports_streaming=True
                                 )
@@ -123,12 +125,12 @@ class InstagramHandler:
                                     if compressed_size_kb <= self.MAX_FILE_SIZE_KB:
                                         await update.message.chat.send_video(
                                             video=open(compressed_path, 'rb'),
-                                            caption=f"{sender_name} {instagram_link}",
+                                            caption=self._format_caption(sender_name, instagram_link),
                                             parse_mode="HTML",
                                             supports_streaming=True
                                         )
                                         await delete_message(update)
-                                        return
+                                return
                     
                     # If we got here, all format attempts failed or were too large
                     # Try to get just a thumbnail
@@ -136,7 +138,7 @@ class InstagramHandler:
                     if not success:
                         # If thumbnail fails, send just the link
                         await update.message.chat.send_message(
-                            f"{sender_name} {instagram_link}\n\n"
+                            self._format_caption(sender_name, instagram_link) + "\n\n"
                             f"Unable to process video. Watch by original link:\n\n"
                             f"{message}",
                             parse_mode="HTML"
@@ -146,7 +148,7 @@ class InstagramHandler:
             except Exception:
                 # If all else fails, send just the link
                 await update.message.chat.send_message(
-                    f"{sender_name} {instagram_link}\n\n"
+                    self._format_caption(sender_name, instagram_link) + "\n\n"
                     f"Error processing content. Try opening the original link.",
                     parse_mode="HTML"
                 )
@@ -154,7 +156,7 @@ class InstagramHandler:
 
         except Exception:
             await update.message.chat.send_message(
-                f"{sender_name} <a href='{message}'>📸 From Instagram</a>\n\n"
+                self._format_caption(sender_name, instagram_link) + "\n\n"
                 f"Error processing content. Try opening the original link.",
                 parse_mode="HTML"
             )
@@ -212,7 +214,7 @@ class InstagramHandler:
                 thumb_file = thumb_files[0]
                 await update.message.chat.send_photo(
                     photo=open(thumb_file, 'rb'),
-                    caption=f"{sender_name} {instagram_link}\n(Unable to send video, see original link)",
+                    caption=self._format_caption(sender_name, instagram_link) + "\n(Unable to send video, see original link)",
                     parse_mode="HTML"
                 )
                 await delete_message(update)

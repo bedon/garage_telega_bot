@@ -20,9 +20,9 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     message = update.message.text
-    sender_name = update.message.from_user.full_name
+    sender = update.message.from_user
     chat_id = update.message.chat_id
-    user_prefix = await randomize_status(sender_name, chat_id)
+    user_prefix = await randomize_status(sender, chat_id)
 
     try:
         # Try to handle the message with each handler

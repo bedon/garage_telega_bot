@@ -32,7 +32,7 @@ async def test_handle_twitter_link_success(mock_telegram_update, twitter_handler
         mock_telegram_update.message.chat.send_video.assert_called_once()
         call_args = mock_telegram_update.message.chat.send_video.call_args[1]
         assert "Test User" in call_args['caption']
-        assert "From Twitter (X)" in call_args['caption']
+        assert "Twitter (X)" in call_args['caption']
         assert call_args['parse_mode'] == "HTML"
 
 @pytest.mark.asyncio

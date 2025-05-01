@@ -33,32 +33,37 @@ async def test_delete_message_failure():
 @pytest.mark.asyncio
 async def test_randomize_status_new_user():
     # Test with a new user
-    user_name = "Test User"
+    user = MagicMock(spec=User)
+    user.id = 123
+    user.full_name = "Test User"
     chat_id = 123
     
-    result = await randomize_status(user_name, chat_id)
+    result = await randomize_status(user, chat_id)
     
-    # Check that the result contains the user name
-    assert user_name in result
-    # Check that it starts with a status
-    assert result.startswith(("👑 NICE GUY 👑\n", "😎 CHILL GUY 🚬\n", "COOL DUDE 🤘\n", "FUNNY DUDE 🤣\n"))
+    # Check that the result contains the user name and link
+    assert user.full_name in result
+    assert f"tg://user?id={user.id}" in result
+    # Check that it contains a status
+    assert any(status in result for status in ["👑 NICE GUY 👑", "😎 CHILL GUY 🚬", "COOL DUDE 🤘", "FUNNY DUDE 🤣"])
 
 @pytest.mark.asyncio
 async def test_randomize_status_streak():
     # Test streak functionality
-    user_name = "Test User"
+    user = MagicMock(spec=User)
+    user.id = 456
+    user.full_name = "Test User"
     chat_id = 456
     
     # First message
-    result1 = await randomize_status(user_name, chat_id)
+    result1 = await randomize_status(user, chat_id)
     assert "🌈 GAY SPAMMER 💦💦💦\n" not in result1
     
     # Second message from same user
-    result2 = await randomize_status(user_name, chat_id)
+    result2 = await randomize_status(user, chat_id)
     assert "🌈 GAY SPAMMER 💦💦💦\n" not in result2
     
     # Third message from same user
-    result3 = await randomize_status(user_name, chat_id)
+    result3 = await randomize_status(user, chat_id)
     assert "🌈 GAY SPAMMER 💦💦💦\n" in result3
 
 @pytest.mark.asyncio
@@ -67,13 +72,19 @@ async def test_randomize_status_different_users():
     chat_id = 789
     
     # First user
-    result1 = await randomize_status("User1", chat_id)
+    user1 = MagicMock(spec=User)
+    user1.id = 1
+    user1.full_name = "User1"
+    result1 = await randomize_status(user1, chat_id)
     
     # Second user
-    result2 = await randomize_status("User2", chat_id)
+    user2 = MagicMock(spec=User)
+    user2.id = 2
+    user2.full_name = "User2"
+    result2 = await randomize_status(user2, chat_id)
     
-    assert "User1" in result1
-    assert "User2" in result2
+    assert user1.full_name in result1
+    assert user2.full_name in result2
     assert "🌈 GAY SPAMMER 💦💦💦\n" not in result2
 
 def test_load_handlers():

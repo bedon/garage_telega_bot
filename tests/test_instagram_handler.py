@@ -72,7 +72,7 @@ async def test_handle_successful_video_download(instagram_handler, mock_update):
         mock_update.message.chat.send_video.assert_called_once()
         call_args = mock_update.message.chat.send_video.call_args[1]
         assert call_args['video'] == "https://example.com/video.mp4"
-        assert "From Instagram" in call_args['caption']
+        assert "Instagram" in call_args['caption']
         assert call_args['parse_mode'] == "HTML"
 
 @pytest.mark.asyncio
@@ -106,7 +106,7 @@ async def test_handle_fallback_to_api(instagram_handler, mock_update):
         )
         
         mock_update.message.chat.send_video.assert_called_once()
-        assert "From Instagram" in mock_update.message.chat.send_video.call_args[1]['caption']
+        assert "Instagram" in mock_update.message.chat.send_video.call_args[1]['caption']
 
 @pytest.mark.asyncio
 async def test_handle_all_methods_fail(instagram_handler, mock_update):
