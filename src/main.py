@@ -9,7 +9,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 # Set up logger
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO  # Changed to INFO to help with debugging
+    level=logging.ERROR  # Changed to INFO to help with debugging
 )
 
 # Load environment variables

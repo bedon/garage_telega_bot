@@ -48,7 +48,6 @@ class InstagramHandler(BaseHandler):
         return result
 
     async def is_dd_link_working(self, dd_link: str) -> bool:
-        return False
         logger.debug(f"Checking if DD link is working: {dd_link}")
         try:
             async with aiohttp.ClientSession() as session:
@@ -87,12 +86,16 @@ class InstagramHandler(BaseHandler):
 
             if await self.is_dd_link_working(dd_message):
                 logger.info("DD link is working, sending message with DD link")
-                instagram_link = f'<a href="{dd_message}">📸 Instagram</a>'
+                
+                # Format with emoji but keep the URL separate for preview
+                message_text = f"{dd_message}\n\n{sender_name}from 📸 Instagram"
+                
                 await update.message.chat.send_message(
-                    self._format_caption(sender_name, instagram_link),
-                    parse_mode="HTML",
-                    disable_web_page_preview=False,  # Explicitly enable preview
+                    text=message_text,
+                    parse_mode="HTML",  # Use HTML for other formatting if needed
+                    disable_web_page_preview=False  # Ensure preview is enabled
                 )
+    
                 await delete_message(update)
                 logger.debug("Message sent and original deleted")
                 return
