@@ -1,9 +1,16 @@
 import os
 from dotenv import load_dotenv
 from utils import randomize_status, load_handlers
+import logging
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+
+# Set up logger
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO  # Changed to INFO to help with debugging
+)
 
 # Load environment variables
 load_dotenv()
