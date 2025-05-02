@@ -9,8 +9,10 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 # Set up logger
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.ERROR  # Changed to INFO to help with debugging
+    level=logging.ERROR
 )
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +41,7 @@ async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
     except Exception as e:
-        print(f"Error processing message: {e}")
+        logger.error(f"Error processing message: {e}", exc_info=True)
 
 def main():
     # Initialize and run the bot

@@ -1,8 +1,11 @@
 import aiohttp
+import logging
 
 from telegram import Update
 from utils import delete_message
 from . import BaseHandler
+
+logger = logging.getLogger(__name__)
 
 class TikTokHandler(BaseHandler):
     def __init__(self):
@@ -51,15 +54,5 @@ class TikTokHandler(BaseHandler):
             except Exception:
                 pass
 
-            # If both APIs fail
-            await update.message.chat.send_message(
-                self._format_caption(sender_name, tiktok_link) + "\n\n[Failed to get video]",
-                parse_mode="HTML"
-            )
-
         except Exception as e:
-            print(f"Error processing TikTok video: {e}")
-            await update.message.chat.send_message(
-                self._format_caption(sender_name, tiktok_link) + "\n\n[Error downloading video]",
-                parse_mode="HTML"
-            )
+            pass

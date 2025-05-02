@@ -2,11 +2,13 @@ import io
 import subprocess
 import tempfile
 import os
+import logging
 
 from telegram import Update
 from utils import delete_message
 from . import BaseHandler
 
+logger = logging.getLogger(__name__)
 
 class FacebookHandler(BaseHandler):
     def __init__(self):
@@ -66,24 +68,5 @@ class FacebookHandler(BaseHandler):
             except Exception:
                 pass
 
-            # If download failed
-            await update.message.chat.send_message(
-                self._format_caption(sender_name, fb_link) + "\n\n"
-                f"Failed to automatically download the video.\n"
-                f"Watch by original link:\n\n"
-                # f"1. https://fdown.net/\n"
-                # f"2. https://snapvid.net/\n\n"
-                f"Original link: {message}",
-                parse_mode="HTML"
-            )
-
         except Exception as e:
-            print(f"Error processing Facebook video: {e}")
-            await update.message.chat.send_message(
-                self._format_caption(sender_name, fb_link) + "\n\n"
-                f"Error processing video. Watch by original link:\n\n"
-                # f"1. https://fdown.net/\n"
-                # f"2. https://snapvid.net/\n\n"
-                f"Original link: {message}",
-                parse_mode="HTML"
-            )
+            pass
