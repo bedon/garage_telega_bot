@@ -48,6 +48,7 @@ class InstagramHandler(BaseHandler):
         return result
 
     async def is_dd_link_working(self, dd_link: str) -> bool:
+        return False
         logger.debug(f"Checking if DD link is working: {dd_link}")
         try:
             async with aiohttp.ClientSession() as session:
