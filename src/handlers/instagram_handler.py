@@ -10,6 +10,9 @@ from utils import delete_message
 from . import BaseHandler
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+
+USE_DD_LINK = False
 
 class InstagramHandler(BaseHandler):
     def __init__(self):
@@ -48,6 +51,9 @@ class InstagramHandler(BaseHandler):
         return result
 
     async def is_dd_link_working(self, dd_link: str) -> bool:
+        if not USE_DD_LINK:
+            return False
+
         logger.debug(f"Checking if DD link is working: {dd_link}")
         try:
             async with aiohttp.ClientSession() as session:
