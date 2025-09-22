@@ -220,8 +220,6 @@ class InstagramHandler(BaseHandler):
                             "--sleep-requests", "2",
                             "--retries", "3",
                             "--fragment-retries", "3",
-                            "--retry-sleep", "exponential:2",
-                            "--extractor-args", "instagram:api_ver=v1",
                             "-f",
                             format_selector,
                             "--merge-output-format",
