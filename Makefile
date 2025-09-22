@@ -26,6 +26,13 @@ clean-all: clean
 	find . -type d -name ".mypy_cache" -exec rm -rf {} +
 	find . -type d -name ".ruff_cache" -exec rm -rf {} +
 
+git:
+	git pull
+
+deploy: git stop run
+	@echo "Deployed"
+
+
 dev:
 	python src/main.py
 
