@@ -72,9 +72,8 @@ class InstagramHandler(BaseHandler):
         self._last_request_time = 0
 
     def can_handle(self, message: str) -> bool:
-        result = any(link in message.lower() for link in self.INSTAGRAM_LINKS)
-        logger.debug(f"Can handle check for '{message[:50]}...': {result}")
-        return result
+        # Instagram handler temporarily disabled due to authentication requirements
+        return False
 
     def get_random_user_agent(self):
         return random.choice(self.USER_AGENTS)
