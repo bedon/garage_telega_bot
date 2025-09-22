@@ -67,6 +67,10 @@ class InstagramHandler(BaseHandler):
         # Session for reusing connections and cookies
         self.session = None
 
+        # Instaloader instance (reuse to maintain session)
+        self._instaloader_instance = None
+        self._last_request_time = 0
+
     def can_handle(self, message: str) -> bool:
         result = any(link in message.lower() for link in self.INSTAGRAM_LINKS)
         logger.debug(f"Can handle check for '{message[:50]}...': {result}")
@@ -161,8 +165,8 @@ class InstagramHandler(BaseHandler):
             logger.debug("DD link not working, trying instaloader first")
             instagram_link = f'<a href="{message}">📸 Instagram</a>'
 
-            # Try instaloader first if available
-            if INSTALOADER_AVAILABLE:
+            # Try instaloader first if available (temporarily disabled due to rate limiting)
+            if False and INSTALOADER_AVAILABLE:
                 try:
                     if await self.try_instaloader_download(update, message, sender_name, instagram_link, instagram_id):
                         return
@@ -211,14 +215,17 @@ class InstagramHandler(BaseHandler):
                             "--no-check-certificate",
                             "--user-agent",
                             self.get_random_user_agent(),
+                            "--sleep-interval", "3",
+                            "--max-sleep-interval", "8",
+                            "--sleep-requests", "2",
+                            "--retries", "3",
+                            "--fragment-retries", "3",
+                            "--retry-sleep", "exponential:2",
+                            "--extractor-args", "instagram:api_ver=v1",
                             "-f",
                             format_selector,
                             "--merge-output-format",
                             "mp4",
-                            "--sleep-interval",
-                            "1",
-                            "--max-sleep-interval",
-                            "3",
                             "-o",
                             str(output_path),
                             message,
@@ -357,27 +364,43 @@ class InstagramHandler(BaseHandler):
             logger.error(f"Exception in compress_video: {str(e)}", exc_info=True)
             return None
 
+    def get_instaloader_instance(self, temp_dir):
+        """Get or create instaloader instance with session reuse"""
+        if self._instaloader_instance is None:
+            self._instaloader_instance = instaloader.Instaloader(
+                dirname_pattern=temp_dir,
+                filename_pattern="instagram_{shortcode}",
+                download_pictures=False,
+                download_videos=True,
+                download_video_thumbnails=False,
+                download_geotags=False,
+                download_comments=False,
+                save_metadata=False,
+                compress_json=False,
+                sleep=True,  # Enable built-in rate limiting
+                max_connection_attempts=3
+            )
+        return self._instaloader_instance
+
     async def try_instaloader_download(self, update, message, sender_name, instagram_link, instagram_id):
-        """Try downloading with instaloader as primary method"""
+        """Try downloading with instaloader with aggressive rate limiting"""
         logger.info("Attempting download with instaloader")
 
         try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Create instaloader instance with custom settings
-                L = instaloader.Instaloader(
-                    dirname_pattern=temp_dir,
-                    filename_pattern=f"instagram_{instagram_id}",
-                    download_pictures=False,
-                    download_videos=True,
-                    download_video_thumbnails=False,
-                    download_geotags=False,
-                    download_comments=False,
-                    save_metadata=False,
-                    compress_json=False
-                )
+            # Rate limiting - wait at least 10 seconds between requests
+            import time
+            current_time = time.time()
+            time_since_last = current_time - self._last_request_time
+            if time_since_last < 10:
+                wait_time = 10 - time_since_last
+                logger.info(f"Rate limiting: waiting {wait_time:.1f} seconds")
+                await asyncio.sleep(wait_time)
 
-                # Add random delay
-                await asyncio.sleep(random.uniform(1, 3))
+            self._last_request_time = time.time()
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Get reusable instaloader instance
+                L = self.get_instaloader_instance(temp_dir)
 
                 # Extract shortcode from URL
                 shortcode_match = re.search(r'/(?:p|reel)/([^/?]+)', message)
@@ -385,6 +408,10 @@ class InstagramHandler(BaseHandler):
                     return False
 
                 shortcode = shortcode_match.group(1)
+                logger.info(f"Downloading shortcode: {shortcode}")
+
+                # Add additional delay before request
+                await asyncio.sleep(random.uniform(2, 5))
 
                 # Download the post
                 post = instaloader.Post.from_shortcode(L.context, shortcode)
@@ -417,6 +444,8 @@ class InstagramHandler(BaseHandler):
 
         except Exception as e:
             logger.error(f"Instaloader download failed: {str(e)}")
+            # Reset instance on failure to get fresh session
+            self._instaloader_instance = None
             return False
 
     async def cleanup(self):
