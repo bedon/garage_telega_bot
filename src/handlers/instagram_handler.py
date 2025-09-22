@@ -11,10 +11,16 @@ from telegram import Update
 from utils import delete_message
 from . import BaseHandler
 
+try:
+    import instaloader
+    INSTALOADER_AVAILABLE = True
+except ImportError:
+    INSTALOADER_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-USE_DD_LINK = True
+USE_DD_LINK = False  # DD Instagram service is down
 
 
 class InstagramHandler(BaseHandler):
@@ -152,15 +158,23 @@ class InstagramHandler(BaseHandler):
                 logger.debug("Message sent and original deleted")
                 return
 
-            logger.debug("DD link not working, falling back to original link")
+            logger.debug("DD link not working, trying instaloader first")
             instagram_link = f'<a href="{message}">📸 Instagram</a>'
 
-            # Check for required tools
+            # Try instaloader first if available
+            if INSTALOADER_AVAILABLE:
+                try:
+                    if await self.try_instaloader_download(update, message, sender_name, instagram_link, instagram_id):
+                        return
+                except Exception as e:
+                    logger.warning(f"Instaloader failed: {str(e)}")
+
+            # Check for required tools for yt-dlp fallback
             if not self.yt_dlp_available or not self.ffmpeg_available:
                 logger.warning("Required tools not available")
                 return
 
-            # Try to download the video
+            # Try to download the video with yt-dlp
             try:
                 logger.debug("Creating temporary directory for downloads")
                 with tempfile.TemporaryDirectory() as temp_dir:
@@ -342,6 +356,68 @@ class InstagramHandler(BaseHandler):
         except Exception as e:
             logger.error(f"Exception in compress_video: {str(e)}", exc_info=True)
             return None
+
+    async def try_instaloader_download(self, update, message, sender_name, instagram_link, instagram_id):
+        """Try downloading with instaloader as primary method"""
+        logger.info("Attempting download with instaloader")
+
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Create instaloader instance with custom settings
+                L = instaloader.Instaloader(
+                    dirname_pattern=temp_dir,
+                    filename_pattern=f"instagram_{instagram_id}",
+                    download_pictures=False,
+                    download_videos=True,
+                    download_video_thumbnails=False,
+                    download_geotags=False,
+                    download_comments=False,
+                    save_metadata=False,
+                    compress_json=False
+                )
+
+                # Add random delay
+                await asyncio.sleep(random.uniform(1, 3))
+
+                # Extract shortcode from URL
+                shortcode_match = re.search(r'/(?:p|reel)/([^/?]+)', message)
+                if not shortcode_match:
+                    return False
+
+                shortcode = shortcode_match.group(1)
+
+                # Download the post
+                post = instaloader.Post.from_shortcode(L.context, shortcode)
+                L.download_post(post, target=temp_dir)
+
+                # Find the downloaded video file
+                video_files = list(Path(temp_dir).glob("*.mp4"))
+                if not video_files:
+                    logger.warning("No video files found after instaloader download")
+                    return False
+
+                video_path = video_files[0]
+                file_size_kb = os.path.getsize(video_path) / 1024
+                logger.info(f"Instaloader downloaded video: {file_size_kb:.2f}KB")
+
+                # Check file size and send
+                if file_size_kb <= self.MAX_FILE_SIZE_KB:
+                    await update.message.chat.send_video(
+                        video=open(video_path, 'rb'),
+                        caption=self._format_caption(sender_name, instagram_link),
+                        parse_mode="HTML",
+                        supports_streaming=True
+                    )
+                    await delete_message(update)
+                    logger.info("Video sent successfully via instaloader")
+                    return True
+                else:
+                    logger.warning(f"Instaloader video too large: {file_size_kb:.2f}KB")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Instaloader download failed: {str(e)}")
+            return False
 
     async def cleanup(self):
         """Cleanup session resources"""
