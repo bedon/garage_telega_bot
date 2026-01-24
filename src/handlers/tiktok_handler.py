@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class TikTokHandler(BaseHandler):
     def __init__(self):
-        self.TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/"]
+        self.TIKTOK_LINKS = ["https://www.tiktok.com/", "https://vm.tiktok.com/", "https://vt.tiktok.com/"]
 
     def can_handle(self, message: str) -> bool:
         return any(link in message for link in self.TIKTOK_LINKS)
