@@ -83,9 +83,8 @@ If you run the bot on a server without a browser, export cookies on your desktop
      - Chrome: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
      - Firefox: [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
    - Go to [instagram.com](https://www.instagram.com) and ensure you're logged in
-   - Use the extension to export cookies **only for instagram.com** (not "all cookies")
+   - Use the extension to export cookies for `instagram.com`
    - Save as `instagram_cookies.txt` (Netscape format)
-   - If you exported all browser cookies, the bot will auto-filter to Instagram-only, but exporting just instagram.com is more reliable
 
 2. **Transfer to your server**:
    ```bash
