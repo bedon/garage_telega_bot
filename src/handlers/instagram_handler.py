@@ -15,6 +15,33 @@ from . import BaseHandler
 
 INSTAGRAM_COOKIES_FILE = os.getenv("INSTAGRAM_COOKIES_FILE")
 
+
+def _get_instagram_cookies_path() -> tuple[str | None, str | None]:
+    """
+    Return (cookies_path, temp_path_to_delete).
+    If file has mixed domains, extract Instagram-only to temp file for cleaner yt-dlp input.
+    """
+    if not INSTAGRAM_COOKIES_FILE or not os.path.isfile(INSTAGRAM_COOKIES_FILE):
+        return None, None
+    try:
+        with open(INSTAGRAM_COOKIES_FILE, encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except OSError:
+        return None, None
+    instagram_domain_lines = [l for l in lines if ".instagram.com" in l]
+    if len(instagram_domain_lines) < 3:
+        return None, None
+    # If file has many non-Instagram cookies, filter to Instagram-only
+    if len(instagram_domain_lines) < len(lines) * 0.1:
+        header = [l for l in lines if l.strip().startswith("#")][:3]
+        fd, path = tempfile.mkstemp(suffix=".txt", prefix="ig_cookies_")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.writelines(header if header else ["# Netscape HTTP Cookie File\n"])
+            f.writelines(instagram_domain_lines)
+        logger.info("Instagram: filtered %d Instagram cookies from mixed file (%d total lines)", len(instagram_domain_lines), len(lines))
+        return path, path
+    return INSTAGRAM_COOKIES_FILE, None
+
 try:
     import instaloader
 
@@ -232,6 +259,11 @@ class InstagramHandler(BaseHandler):
                 return
 
             # Try to download the video with yt-dlp
+            cookies_path, cookies_temp_to_delete = _get_instagram_cookies_path()
+            if INSTAGRAM_COOKIES_FILE and not cookies_path:
+                logger.warning(
+                    "Instagram: INSTAGRAM_COOKIES_FILE set but no valid Instagram cookies found (file missing or <3 instagram cookies)",
+                )
             try:
                 logger.debug("Creating temporary directory for downloads")
                 with tempfile.TemporaryDirectory() as temp_dir:
@@ -269,19 +301,9 @@ class InstagramHandler(BaseHandler):
                             "--user-agent",
                             self.get_random_user_agent(),
                         ]
-                        if INSTAGRAM_COOKIES_FILE and os.path.isfile(
-                            INSTAGRAM_COOKIES_FILE
-                        ):
-                            download_cmd.extend(["--cookies", INSTAGRAM_COOKIES_FILE])
-                            logger.info(
-                                "Instagram: using cookies from %s",
-                                INSTAGRAM_COOKIES_FILE,
-                            )
-                        elif INSTAGRAM_COOKIES_FILE:
-                            logger.warning(
-                                "Instagram: INSTAGRAM_COOKIES_FILE set but file not found: %s",
-                                INSTAGRAM_COOKIES_FILE,
-                            )
+                        if cookies_path:
+                            download_cmd.extend(["--cookies", cookies_path])
+                            logger.info("Instagram: using cookies from %s", cookies_path)
                         download_cmd.extend(
                             [
                                 "--sleep-interval",
@@ -376,15 +398,24 @@ class InstagramHandler(BaseHandler):
                                 else:
                                     logger.error("Compression failed")
                     else:
-                        stderr_preview = (download_process.stderr or "")[:200]
+                        stderr = (download_process.stderr or "").strip()
+                        # Log last 300 chars (yt-dlp puts the actual error at the end)
+                        stderr_preview = stderr[-300:] if len(stderr) > 300 else stderr
                         logger.warning(
-                            "Instagram yt-dlp format %s failed: %s",
+                            "Instagram yt-dlp format %s failed (returncode=%s): %s",
                             i + 1,
+                            download_process.returncode,
                             stderr_preview or "no output",
                         )
 
             except Exception as e:
                 logger.error("Instagram yt-dlp exception: %s", e, exc_info=True)
+            finally:
+                if cookies_temp_to_delete and os.path.isfile(cookies_temp_to_delete):
+                    try:
+                        os.remove(cookies_temp_to_delete)
+                    except OSError:
+                        pass
 
             logger.warning("Instagram: all download methods failed for %s", url)
         except Exception as e:
