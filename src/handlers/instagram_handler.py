@@ -1,6 +1,8 @@
-import re
+import io
 import os
+import re
 import tempfile
+from urllib.parse import quote
 import subprocess
 import logging
 from pathlib import Path
@@ -13,6 +15,7 @@ from . import BaseHandler
 
 try:
     import instaloader
+
     INSTALOADER_AVAILABLE = True
 except ImportError:
     INSTALOADER_AVAILABLE = False
@@ -21,6 +24,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 USE_DD_LINK = False  # DD Instagram service is down
+
+# Regex to extract Instagram URL from message
+INSTAGRAM_URL_PATTERN = re.compile(
+    r"https?://(?:www\.)?instagram\.com/(?:p|reel)/[^\s]+", re.IGNORECASE
+)
+
+REELSAVER_API = "https://reelsaver.vercel.app/api/video"
 
 
 class InstagramHandler(BaseHandler):
@@ -61,7 +71,7 @@ class InstagramHandler(BaseHandler):
         ]
 
         # Max file size for Telegram (8MB to be safe)
-        self.MAX_FILE_SIZE_KB = 8000
+        self.MAX_FILE_SIZE_KB = 50000
         logger.debug(f"Max file size set to {self.MAX_FILE_SIZE_KB}KB")
 
         # Session for reusing connections and cookies
@@ -72,8 +82,12 @@ class InstagramHandler(BaseHandler):
         self._last_request_time = 0
 
     def can_handle(self, message: str) -> bool:
-        # Instagram handler temporarily disabled due to authentication requirements
-        return False
+        return any(link in message for link in self.INSTAGRAM_LINKS)
+
+    def _extract_url(self, message: str) -> str | None:
+        """Extract Instagram URL from message (handles extra text around the link)."""
+        match = INSTAGRAM_URL_PATTERN.search(message)
+        return match.group(0).rstrip(".,;:!?)") if match else None
 
     def get_random_user_agent(self):
         return random.choice(self.USER_AGENTS)
@@ -125,56 +139,81 @@ class InstagramHandler(BaseHandler):
                 if resp.status != 200:
                     logger.warning(f"DD link returned non-200 status: {resp.status}")
                     return False
-                logger.debug(f"DD link is working (status 200)")
+                logger.debug("DD link is working (status 200)")
                 return True
         except Exception as e:
             logger.error(f"Error checking DD link: {str(e)}")
             return False
 
-    async def handle(self, update: Update, message: str, sender_name: str) -> None:
+    async def _download_via_reelsaver(self, url: str) -> bytes | None:
+        """Get video URL from ReelSaver API, download with browser User-Agent, return bytes."""
         try:
-            # Extract post ID
-            logger.debug("Extracting Instagram post ID")
-            instagram_id_match = re.search(r"/(?:p|reel)/([^/?]+)", message)
-            if not instagram_id_match:
-                logger.warning(f"Invalid Instagram link format: {message}")
-                return
+            api_url = f"{REELSAVER_API}?postUrl={quote(url, safe='')}"
+            headers = {"User-Agent": self.get_random_user_agent()}
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    api_url, headers=headers, timeout=30
+                ) as response:
+                    data = await response.json()
+            if data.get("status") != "success" or not data.get("data", {}).get(
+                "videoUrl"
+            ):
+                logger.debug("ReelSaver API returned no video: %s", data)
+                return None
+            video_url = data["data"]["videoUrl"]
+            headers["Referer"] = "https://www.instagram.com/"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(video_url, headers=headers, timeout=60) as resp:
+                    if resp.status != 200:
+                        logger.warning("Instagram CDN returned status %s", resp.status)
+                        return None
+                    return await resp.read()
+        except Exception as e:
+            logger.warning("ReelSaver download failed: %s", e)
+            return None
 
-            instagram_id = instagram_id_match.group(1)
-            logger.info(f"Instagram ID extracted: {instagram_id}")
+    async def handle(self, update: Update, message: str, sender_name: str) -> None:
+        url = self._extract_url(message)
+        if not url:
+            logger.warning("No Instagram URL found in message: %s", message[:80])
+            return
 
-            # Try ddinstagram link first
-            dd_message = message.replace("instagram", "ddinstagram")
-            logger.debug(f"Trying ddinstagram link: {dd_message}")
+        instagram_link = f'<a href="{url}">📸 Instagram</a>'
 
-            if await self.is_dd_link_working(dd_message):
-                logger.info("DD link is working, sending message with DD link")
-
-                # Format with emoji but keep the URL separate for preview
-                message_text = f"{dd_message}\n\n{sender_name}from 📸 Instagram"
-
-                await update.message.chat.send_message(
-                    text=message_text, parse_mode="HTML", disable_web_page_preview=False
+        try:
+            # 1. Try ReelSaver API first (free, no login, similar to tikwm for TikTok)
+            video_bytes = await self._download_via_reelsaver(url)
+            if video_bytes:
+                video_io = io.BytesIO(video_bytes)
+                video_io.seek(0)
+                await update.message.chat.send_video(
+                    video=video_io,
+                    caption=self._format_caption(sender_name, instagram_link),
+                    parse_mode="HTML",
+                    supports_streaming=True,
                 )
-
                 await delete_message(update)
-                logger.debug("Message sent and original deleted")
                 return
 
-            logger.debug("DD link not working, trying instaloader first")
-            instagram_link = f'<a href="{message}">📸 Instagram</a>'
+            # 2. Try ddinstagram link (if enabled)
+            if USE_DD_LINK:
+                dd_message = url.replace("instagram", "ddinstagram")
+                if await self.is_dd_link_working(dd_message):
+                    message_text = f"{dd_message}\n\n{sender_name}from 📸 Instagram"
+                    await update.message.chat.send_message(
+                        text=message_text,
+                        parse_mode="HTML",
+                        disable_web_page_preview=False,
+                    )
+                    await delete_message(update)
+                    return
 
-            # Try instaloader first if available (temporarily disabled due to rate limiting)
-            if False and INSTALOADER_AVAILABLE:
-                try:
-                    if await self.try_instaloader_download(update, message, sender_name, instagram_link, instagram_id):
-                        return
-                except Exception as e:
-                    logger.warning(f"Instaloader failed: {str(e)}")
+            # 3. Try yt-dlp fallback (may require cookies for some posts)
+            instagram_id_match = re.search(r"/(?:p|reel)/([^/?]+)", url)
+            instagram_id = instagram_id_match.group(1) if instagram_id_match else "post"
 
-            # Check for required tools for yt-dlp fallback
             if not self.yt_dlp_available or not self.ffmpeg_available:
-                logger.warning("Required tools not available")
+                logger.warning("yt-dlp/ffmpeg not available for fallback")
                 return
 
             # Try to download the video with yt-dlp
@@ -214,18 +253,23 @@ class InstagramHandler(BaseHandler):
                             "--no-check-certificate",
                             "--user-agent",
                             self.get_random_user_agent(),
-                            "--sleep-interval", "3",
-                            "--max-sleep-interval", "8",
-                            "--sleep-requests", "2",
-                            "--retries", "3",
-                            "--fragment-retries", "3",
+                            "--sleep-interval",
+                            "3",
+                            "--max-sleep-interval",
+                            "8",
+                            "--sleep-requests",
+                            "2",
+                            "--retries",
+                            "3",
+                            "--fragment-retries",
+                            "3",
                             "-f",
                             format_selector,
                             "--merge-output-format",
                             "mp4",
                             "-o",
                             str(output_path),
-                            message,
+                            url,
                         ]
 
                         logger.debug(
@@ -375,17 +419,20 @@ class InstagramHandler(BaseHandler):
                 save_metadata=False,
                 compress_json=False,
                 sleep=True,  # Enable built-in rate limiting
-                max_connection_attempts=3
+                max_connection_attempts=3,
             )
         return self._instaloader_instance
 
-    async def try_instaloader_download(self, update, message, sender_name, instagram_link, instagram_id):
+    async def try_instaloader_download(
+        self, update, message, sender_name, instagram_link, instagram_id
+    ):
         """Try downloading with instaloader with aggressive rate limiting"""
         logger.info("Attempting download with instaloader")
 
         try:
             # Rate limiting - wait at least 10 seconds between requests
             import time
+
             current_time = time.time()
             time_since_last = current_time - self._last_request_time
             if time_since_last < 10:
@@ -400,7 +447,7 @@ class InstagramHandler(BaseHandler):
                 L = self.get_instaloader_instance(temp_dir)
 
                 # Extract shortcode from URL
-                shortcode_match = re.search(r'/(?:p|reel)/([^/?]+)', message)
+                shortcode_match = re.search(r"/(?:p|reel)/([^/?]+)", message)
                 if not shortcode_match:
                     return False
 
@@ -427,10 +474,10 @@ class InstagramHandler(BaseHandler):
                 # Check file size and send
                 if file_size_kb <= self.MAX_FILE_SIZE_KB:
                     await update.message.chat.send_video(
-                        video=open(video_path, 'rb'),
+                        video=open(video_path, "rb"),
                         caption=self._format_caption(sender_name, instagram_link),
                         parse_mode="HTML",
-                        supports_streaming=True
+                        supports_streaming=True,
                     )
                     await delete_message(update)
                     logger.info("Video sent successfully via instaloader")
@@ -450,4 +497,3 @@ class InstagramHandler(BaseHandler):
         if self.session and not self.session.closed:
             await self.session.close()
             self.session = None
-
