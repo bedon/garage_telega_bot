@@ -70,6 +70,33 @@ The bot uses the following environment variables:
   - Keep this token secure and never share it publicly
 - `LOG_LEVEL`: Logging verbosity (optional, default: `ERROR`)
   - Set to `INFO` or `DEBUG` for verbose output when debugging (e.g. `LOG_LEVEL=INFO python src/main.py`)
+- `INSTAGRAM_COOKIES_FILE`: Path to Instagram cookies file (optional)
+  - Used by yt-dlp fallback when ReelSaver says "Video link for this post is not public"
+  - Cookies must be in Netscape format (see below)
+
+### Getting Instagram cookies (for headless servers)
+
+If you run the bot on a server without a browser, export cookies on your desktop/laptop and transfer them:
+
+1. **On your desktop/laptop** (with a browser where you're logged into Instagram):
+   - Install a cookies export extension:
+     - Chrome: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+     - Firefox: [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+   - Go to [instagram.com](https://www.instagram.com) and ensure you're logged in
+   - Use the extension to export cookies for `instagram.com`
+   - Save as `instagram_cookies.txt` (Netscape format)
+
+2. **Transfer to your server**:
+   ```bash
+   scp instagram_cookies.txt user@your-server:/path/to/garage_telega_bot/
+   ```
+
+3. **Add to `.env`**:
+   ```
+   INSTAGRAM_COOKIES_FILE=/path/to/garage_telega_bot/instagram_cookies.txt
+   ```
+
+   Cookies expire (typically after a few weeks). Re-export and replace the file when downloads start failing again.
 
 ## Creating Custom Handlers
 

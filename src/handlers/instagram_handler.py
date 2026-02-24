@@ -13,6 +13,8 @@ from telegram import Update
 from utils import delete_message
 from . import BaseHandler
 
+INSTAGRAM_COOKIES_FILE = os.getenv("INSTAGRAM_COOKIES_FILE")
+
 try:
     import instaloader
 
@@ -35,7 +37,11 @@ REELSAVER_API = "https://reelsaver.vercel.app/api/video"
 class InstagramHandler(BaseHandler):
     def __init__(self):
         logger.info("Initializing InstagramHandler")
-        self.INSTAGRAM_LINKS = ["instagram.com/reel/", "instagram.com/reels/", "instagram.com/p/"]
+        self.INSTAGRAM_LINKS = [
+            "instagram.com/reel/",
+            "instagram.com/reels/",
+            "instagram.com/p/",
+        ]
 
         # Check if yt-dlp is available
         try:
@@ -188,7 +194,10 @@ class InstagramHandler(BaseHandler):
             # 1. Try ReelSaver API first (free, no login, similar to tikwm for TikTok)
             video_bytes = await self._download_via_reelsaver(url)
             if video_bytes:
-                logger.info("Instagram: ReelSaver success, sending video (%d bytes)", len(video_bytes))
+                logger.info(
+                    "Instagram: ReelSaver success, sending video (%d bytes)",
+                    len(video_bytes),
+                )
                 video_io = io.BytesIO(video_bytes)
                 video_io.seek(0)
                 await update.message.chat.send_video(
@@ -259,24 +268,41 @@ class InstagramHandler(BaseHandler):
                             "--no-check-certificate",
                             "--user-agent",
                             self.get_random_user_agent(),
-                            "--sleep-interval",
-                            "3",
-                            "--max-sleep-interval",
-                            "8",
-                            "--sleep-requests",
-                            "2",
-                            "--retries",
-                            "3",
-                            "--fragment-retries",
-                            "3",
-                            "-f",
-                            format_selector,
-                            "--merge-output-format",
-                            "mp4",
-                            "-o",
-                            str(output_path),
-                            url,
                         ]
+                        if INSTAGRAM_COOKIES_FILE and os.path.isfile(
+                            INSTAGRAM_COOKIES_FILE
+                        ):
+                            download_cmd.extend(["--cookies", INSTAGRAM_COOKIES_FILE])
+                            logger.info(
+                                "Instagram: using cookies from %s",
+                                INSTAGRAM_COOKIES_FILE,
+                            )
+                        elif INSTAGRAM_COOKIES_FILE:
+                            logger.warning(
+                                "Instagram: INSTAGRAM_COOKIES_FILE set but file not found: %s",
+                                INSTAGRAM_COOKIES_FILE,
+                            )
+                        download_cmd.extend(
+                            [
+                                "--sleep-interval",
+                                "3",
+                                "--max-sleep-interval",
+                                "8",
+                                "--sleep-requests",
+                                "2",
+                                "--retries",
+                                "3",
+                                "--fragment-retries",
+                                "3",
+                                "-f",
+                                format_selector,
+                                "--merge-output-format",
+                                "mp4",
+                                "-o",
+                                str(output_path),
+                                url,
+                            ]
+                        )
 
                         logger.debug(
                             f"Running download command: {' '.join(download_cmd)}"
