@@ -6,10 +6,12 @@ import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-# Set up logger
+# Set up logger (LOG_LEVEL=INFO or DEBUG for verbose output)
+log_level = os.getenv("LOG_LEVEL", "ERROR").upper()
+numeric_level = getattr(logging, log_level, logging.ERROR)
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.ERROR
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=numeric_level,
 )
 
 logger = logging.getLogger(__name__)

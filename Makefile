@@ -36,6 +36,10 @@ deploy: git stop run
 dev:
 	python src/main.py
 
+# Run with verbose logging (LOG_LEVEL=INFO) for debugging
+dev-verbose:
+	LOG_LEVEL=INFO python src/main.py
+
 test:
 	python -m pytest \
 		--cov=src \

@@ -68,6 +68,8 @@ The bot uses the following environment variables:
   - Get it from [@BotFather](https://t.me/BotFather) on Telegram
   - This token is used to authenticate your bot with the Telegram API
   - Keep this token secure and never share it publicly
+- `LOG_LEVEL`: Logging verbosity (optional, default: `ERROR`)
+  - Set to `INFO` or `DEBUG` for verbose output when debugging (e.g. `LOG_LEVEL=INFO python src/main.py`)
 
 ## Creating Custom Handlers
 

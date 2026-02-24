@@ -21,7 +21,6 @@ except ImportError:
     INSTALOADER_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 USE_DD_LINK = False  # DD Instagram service is down
 
@@ -158,7 +157,11 @@ class InstagramHandler(BaseHandler):
             if data.get("status") != "success" or not data.get("data", {}).get(
                 "videoUrl"
             ):
-                logger.debug("ReelSaver API returned no video: %s", data)
+                logger.warning(
+                    "Instagram ReelSaver API failed: status=%s msg=%s",
+                    data.get("status"),
+                    data.get("message", data),
+                )
                 return None
             video_url = data["data"]["videoUrl"]
             headers["Referer"] = "https://www.instagram.com/"
@@ -169,21 +172,23 @@ class InstagramHandler(BaseHandler):
                         return None
                     return await resp.read()
         except Exception as e:
-            logger.warning("ReelSaver download failed: %s", e)
+            logger.warning("Instagram ReelSaver download failed: %s", e, exc_info=True)
             return None
 
     async def handle(self, update: Update, message: str, sender_name: str) -> None:
         url = self._extract_url(message)
         if not url:
-            logger.warning("No Instagram URL found in message: %s", message[:80])
+            logger.warning("Instagram: no URL found in message: %s", message[:80])
             return
 
+        logger.info("Instagram: processing %s", url)
         instagram_link = f'<a href="{url}">📸 Instagram</a>'
 
         try:
             # 1. Try ReelSaver API first (free, no login, similar to tikwm for TikTok)
             video_bytes = await self._download_via_reelsaver(url)
             if video_bytes:
+                logger.info("Instagram: ReelSaver success, sending video (%d bytes)", len(video_bytes))
                 video_io = io.BytesIO(video_bytes)
                 video_io.seek(0)
                 await update.message.chat.send_video(
@@ -195,6 +200,7 @@ class InstagramHandler(BaseHandler):
                 await delete_message(update)
                 return
 
+            logger.info("Instagram: ReelSaver failed, trying yt-dlp fallback")
             # 2. Try ddinstagram link (if enabled)
             if USE_DD_LINK:
                 dd_message = url.replace("instagram", "ddinstagram")
@@ -213,7 +219,7 @@ class InstagramHandler(BaseHandler):
             instagram_id = instagram_id_match.group(1) if instagram_id_match else "post"
 
             if not self.yt_dlp_available or not self.ffmpeg_available:
-                logger.warning("yt-dlp/ffmpeg not available for fallback")
+                logger.warning("Instagram: yt-dlp/ffmpeg not available for fallback")
                 return
 
             # Try to download the video with yt-dlp
@@ -344,15 +350,19 @@ class InstagramHandler(BaseHandler):
                                 else:
                                     logger.error("Compression failed")
                     else:
-                        logger.warning(f"Download failed with format {i + 1}")
-                        if download_process.stderr:
-                            logger.error(f"Error output: {download_process.stderr}")
+                        stderr_preview = (download_process.stderr or "")[:200]
+                        logger.warning(
+                            "Instagram yt-dlp format %s failed: %s",
+                            i + 1,
+                            stderr_preview or "no output",
+                        )
 
             except Exception as e:
-                logger.error(f"Exception in main processing: {str(e)}", exc_info=True)
+                logger.error("Instagram yt-dlp exception: %s", e, exc_info=True)
 
+            logger.warning("Instagram: all download methods failed for %s", url)
         except Exception as e:
-            logger.error(f"Outer exception in handle method: {str(e)}", exc_info=True)
+            logger.error("Instagram handler exception: %s", e, exc_info=True)
             # Don't send any error message to Telegram, just log it
 
     async def compress_video(self, input_path, temp_dir, instagram_id):
