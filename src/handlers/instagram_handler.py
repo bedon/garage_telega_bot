@@ -25,9 +25,9 @@ logger.setLevel(logging.WARNING)
 
 USE_DD_LINK = False  # DD Instagram service is down
 
-# Regex to extract Instagram URL from message
+# Regex to extract Instagram URL from message (reel/reels/p)
 INSTAGRAM_URL_PATTERN = re.compile(
-    r"https?://(?:www\.)?instagram\.com/(?:p|reel)/[^\s]+", re.IGNORECASE
+    r"https?://(?:www\.)?instagram\.com/(?:p|reel|reels)/[^\s]+", re.IGNORECASE
 )
 
 REELSAVER_API = "https://reelsaver.vercel.app/api/video"
@@ -36,7 +36,7 @@ REELSAVER_API = "https://reelsaver.vercel.app/api/video"
 class InstagramHandler(BaseHandler):
     def __init__(self):
         logger.info("Initializing InstagramHandler")
-        self.INSTAGRAM_LINKS = ["instagram.com/reel/", "instagram.com/p/"]
+        self.INSTAGRAM_LINKS = ["instagram.com/reel/", "instagram.com/reels/", "instagram.com/p/"]
 
         # Check if yt-dlp is available
         try:
@@ -209,7 +209,7 @@ class InstagramHandler(BaseHandler):
                     return
 
             # 3. Try yt-dlp fallback (may require cookies for some posts)
-            instagram_id_match = re.search(r"/(?:p|reel)/([^/?]+)", url)
+            instagram_id_match = re.search(r"/(?:p|reels?)/([^/?]+)", url)
             instagram_id = instagram_id_match.group(1) if instagram_id_match else "post"
 
             if not self.yt_dlp_available or not self.ffmpeg_available:
@@ -447,7 +447,7 @@ class InstagramHandler(BaseHandler):
                 L = self.get_instaloader_instance(temp_dir)
 
                 # Extract shortcode from URL
-                shortcode_match = re.search(r"/(?:p|reel)/([^/?]+)", message)
+                shortcode_match = re.search(r"/(?:p|reels?)/([^/?]+)", message)
                 if not shortcode_match:
                     return False
 
