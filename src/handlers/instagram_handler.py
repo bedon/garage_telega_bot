@@ -14,6 +14,8 @@ from utils import delete_message
 from . import BaseHandler
 
 INSTAGRAM_COOKIES_FILE = os.getenv("INSTAGRAM_COOKIES_FILE")
+INSTAGRAM_USERNAME = os.getenv("INSTAGRAM_USERNAME")
+INSTAGRAM_PASSWORD = os.getenv("INSTAGRAM_PASSWORD")
 
 try:
     import instaloader
@@ -25,6 +27,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 USE_DD_LINK = False  # DD Instagram service is down
+# USE_YD = False
 
 # Regex to extract Instagram URL from message (reel/reels/p)
 INSTAGRAM_URL_PATTERN = re.compile(
@@ -209,8 +212,19 @@ class InstagramHandler(BaseHandler):
                 await delete_message(update)
                 return
 
-            logger.info("Instagram: ReelSaver failed, trying yt-dlp fallback")
-            # 2. Try ddinstagram link (if enabled)
+            logger.info("Instagram: ReelSaver failed, trying fallbacks")
+
+            # 2. Try instaloader with login credentials
+            if INSTALOADER_AVAILABLE and INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD:
+                try:
+                    if await self.try_instaloader_download(
+                        update, url, sender_name, instagram_link, None
+                    ):
+                        return
+                except Exception as e:
+                    logger.warning("Instagram: instaloader fallback failed: %s", e)
+
+            # 3. Try ddinstagram link (if enabled)
             if USE_DD_LINK:
                 dd_message = url.replace("instagram", "ddinstagram")
                 if await self.is_dd_link_working(dd_message):
@@ -263,9 +277,14 @@ class InstagramHandler(BaseHandler):
                             "--user-agent",
                             self.get_random_user_agent(),
                         ]
-                        if INSTAGRAM_COOKIES_FILE and os.path.isfile(INSTAGRAM_COOKIES_FILE):
+                        if INSTAGRAM_COOKIES_FILE and os.path.isfile(
+                            INSTAGRAM_COOKIES_FILE
+                        ):
                             download_cmd.extend(["--cookies", INSTAGRAM_COOKIES_FILE])
-                            logger.info("Instagram: using cookies from %s", INSTAGRAM_COOKIES_FILE)
+                            logger.info(
+                                "Instagram: using cookies from %s",
+                                INSTAGRAM_COOKIES_FILE,
+                            )
                         elif INSTAGRAM_COOKIES_FILE:
                             logger.warning(
                                 "Instagram: INSTAGRAM_COOKIES_FILE set but file not found: %s",
@@ -434,9 +453,9 @@ class InstagramHandler(BaseHandler):
             return None
 
     def get_instaloader_instance(self, temp_dir):
-        """Get or create instaloader instance with session reuse"""
+        """Get or create instaloader instance with session reuse."""
         if self._instaloader_instance is None:
-            self._instaloader_instance = instaloader.Instaloader(
+            L = instaloader.Instaloader(
                 dirname_pattern=temp_dir,
                 filename_pattern="instagram_{shortcode}",
                 download_pictures=False,
@@ -446,9 +465,18 @@ class InstagramHandler(BaseHandler):
                 download_comments=False,
                 save_metadata=False,
                 compress_json=False,
-                sleep=True,  # Enable built-in rate limiting
+                sleep=True,
                 max_connection_attempts=3,
             )
+            if INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD:
+                try:
+                    L.login(INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD)
+                    logger.info("Instaloader: logged in as %s", INSTAGRAM_USERNAME)
+                except Exception as e:
+                    logger.warning("Instaloader: login failed: %s", e)
+            else:
+                logger.debug("Instaloader: no credentials, using anonymous session")
+            self._instaloader_instance = L
         return self._instaloader_instance
 
     async def try_instaloader_download(

@@ -70,9 +70,23 @@ The bot uses the following environment variables:
   - Keep this token secure and never share it publicly
 - `LOG_LEVEL`: Logging verbosity (optional, default: `ERROR`)
   - Set to `INFO` or `DEBUG` for verbose output when debugging (e.g. `LOG_LEVEL=INFO python src/main.py`)
+- `INSTAGRAM_USERNAME` / `INSTAGRAM_PASSWORD`: Instagram account credentials (optional)
+  - When set, instaloader logs into Instagram and is used as the first fallback after ReelSaver
+  - Use a **dedicated/burner account** — Instagram may flag or temporarily lock accounts used for automated access
 - `INSTAGRAM_COOKIES_FILE`: Path to Instagram cookies file (optional)
-  - Used by yt-dlp fallback when ReelSaver says "Video link for this post is not public"
+  - Used by yt-dlp fallback when ReelSaver fails and no login credentials are set
   - Cookies must be in Netscape format (see below)
+
+### Instagram authentication (login/password — recommended)
+
+The simplest way to authenticate is to add your Instagram credentials to `.env`:
+
+```
+INSTAGRAM_USERNAME=my_burner_account
+INSTAGRAM_PASSWORD=secret123
+```
+
+The bot uses `instaloader` to log in once at startup and reuse the session. **Do not use your personal account** — use a dedicated one to avoid bans.
 
 ### Getting Instagram cookies (for headless servers)
 
