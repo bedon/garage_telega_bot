@@ -240,13 +240,7 @@ class InstagramHandler(BaseHandler):
                     format_preferences = [
                         # Try 720p video with audio (approx HD)
                         "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]",
-                        # Try 480p video with audio (approx SD)
-                        "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]",
-                        # Try 360p video with audio (low quality)
-                        "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/best[height<=360][ext=mp4]/best[height<=360]",
-                        # Fallback to any format that's less than 8MB
-                        "best[filesize<8M]",
-                        # Last resort, best format
+                        # Fallback to best format
                         "best",
                     ]
 
