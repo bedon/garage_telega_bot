@@ -23,96 +23,55 @@ async def test_can_handle_valid_tiktok_links(tiktok_handler):
     assert not tiktok_handler.can_handle("https://example.com")
 
 @pytest.mark.asyncio
-async def test_handle_successful_first_api(tiktok_handler, mock_update):
-    mock_response = AsyncMock()
-    mock_response.json = AsyncMock(return_value={
-        "code": 0,
-        "data": {
-            "play": "https://example.com/video.mp4"
-        }
-    })
-    
-    mock_context = AsyncMock()
-    mock_context.__aenter__.return_value = mock_response
-    mock_context.__aexit__.return_value = None
-    
-    mock_session = AsyncMock()
-    mock_session.get.return_value = mock_context
-    
-    with patch('aiohttp.ClientSession', return_value=mock_session):
-        await tiktok_handler.handle(
-            mock_update,
-            "https://www.tiktok.com/@user/video/123456789",
-            "Test User"
-        )
-        
-        mock_update.message.chat.send_video.assert_called_once()
-        assert "TikTok" in mock_update.message.chat.send_video.call_args[1]['caption']
+async def test_extract_url_from_message(tiktok_handler):
+    assert tiktok_handler._extract_url("check this https://vm.tiktok.com/ZSmCyNC4U/") == "https://vm.tiktok.com/ZSmCyNC4U/"
+    assert tiktok_handler._extract_url("https://www.tiktok.com/@user/video/123") == "https://www.tiktok.com/@user/video/123"
+    assert tiktok_handler._extract_url("no url here") is None
 
 @pytest.mark.asyncio
-async def test_handle_successful_second_api(tiktok_handler, mock_update):
-    # Mock failed response from first API
-    mock_response1 = AsyncMock()
-    mock_response1.json = AsyncMock(return_value={"code": 1})
-    
-    # Mock successful response from second API
-    mock_response2 = AsyncMock()
-    mock_response2.json = AsyncMock(return_value={
-        "success": True,
-        "video_url": "https://example.com/video.mp4"
-    })
-    
-    mock_context1 = AsyncMock()
-    mock_context1.__aenter__.return_value = mock_response1
-    mock_context1.__aexit__.return_value = None
-    
-    mock_context2 = AsyncMock()
-    mock_context2.__aenter__.return_value = mock_response2
-    mock_context2.__aexit__.return_value = None
-    
-    mock_session = AsyncMock()
-    mock_session.get.side_effect = [mock_context1, mock_context2]
-    
-    with patch('aiohttp.ClientSession', return_value=mock_session):
-        await tiktok_handler.handle(
-            mock_update,
-            "https://www.tiktok.com/@user/video/123456789",
-            "Test User"
-        )
-        
-        mock_update.message.chat.send_video.assert_called_once()
-        assert "TikTok" in mock_update.message.chat.send_video.call_args[1]['caption']
+async def test_handle_successful_api_download(tiktok_handler, mock_update):
+    """Test successful flow when _download_via_api returns video bytes."""
+    with patch.object(tiktok_handler, "_download_via_api", new_callable=AsyncMock, return_value=b"fake_video_bytes"):
+        with patch.object(tiktok_handler, "_download_via_ytdlp", return_value=None):
+            await tiktok_handler.handle(
+                mock_update,
+                "https://vm.tiktok.com/ZSmCyNC4U/",
+                "Test User",
+            )
+
+    mock_update.message.chat.send_video.assert_called_once()
+    assert "TikTok" in mock_update.message.chat.send_video.call_args[1]["caption"]
 
 @pytest.mark.asyncio
-async def test_handle_both_apis_fail(tiktok_handler, mock_update):
-    mock_response = AsyncMock()
-    mock_response.json = AsyncMock(return_value={"code": 1})
-    
-    mock_context = AsyncMock()
-    mock_context.__aenter__.return_value = mock_response
-    mock_context.__aexit__.return_value = None
-    
-    mock_session = AsyncMock()
-    mock_session.get.return_value = mock_context
-    
-    with patch('aiohttp.ClientSession', return_value=mock_session):
-        await tiktok_handler.handle(
-            mock_update,
-            "https://www.tiktok.com/@user/video/123456789",
-            "Test User"
-        )
-        
-        mock_update.message.chat.send_message.assert_called_once()
-        assert "[Error downloading video]" in mock_update.message.chat.send_message.call_args[0][0]
+async def test_handle_successful_ytdlp_fallback(tiktok_handler, mock_update):
+    """Test yt-dlp fallback when API download fails."""
+    with patch.object(tiktok_handler, "_download_via_api", return_value=None):
+        with patch.object(tiktok_handler, "_download_via_ytdlp", return_value=b"fake_video"):
+            await tiktok_handler.handle(
+                mock_update,
+                "https://vm.tiktok.com/ZSmCyNC4U/",
+                "Test User",
+            )
+
+    mock_update.message.chat.send_video.assert_called_once()
+    assert "TikTok" in mock_update.message.chat.send_video.call_args[1]["caption"]
 
 @pytest.mark.asyncio
-async def test_handle_exception_handling(tiktok_handler, mock_update):
-    with patch('aiohttp.ClientSession', side_effect=Exception("Test error")):
-        await tiktok_handler.handle(
-            mock_update,
-            "https://www.tiktok.com/@user/video/123456789",
-            "Test User"
-        )
-        
-        mock_update.message.chat.send_message.assert_called_once()
-        assert "[Error downloading video]" in mock_update.message.chat.send_message.call_args[0][0] 
+async def test_handle_no_url_in_message(tiktok_handler, mock_update):
+    """When no TikTok URL is found, send_video should not be called."""
+    await tiktok_handler.handle(mock_update, "just some text", "Test User")
+    mock_update.message.chat.send_video.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_handle_all_methods_fail(tiktok_handler, mock_update):
+    """When all download methods fail, no video is sent (silent failure)."""
+    with patch.object(tiktok_handler, "_download_via_api", return_value=None):
+        with patch.object(tiktok_handler, "_download_via_ytdlp", return_value=None):
+            with patch("subprocess.run", return_value=MagicMock(returncode=1)):
+                await tiktok_handler.handle(
+                    mock_update,
+                    "https://vm.tiktok.com/ZSmCyNC4U/",
+                    "Test User",
+                )
+
+    mock_update.message.chat.send_video.assert_not_called() 
