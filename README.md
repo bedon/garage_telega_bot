@@ -63,7 +63,7 @@ make ig-check     # verifies the saved session still works
 
 This saves `data/instagram/cookies.txt` and `data/instagram/user_agent.txt`. The running bot picks up a new session automatically, so no restart is needed.
 
-If it fails with **checkpoint / challenge required**: open the Instagram app on your phone, approve the login from the new location ("This was me"), then run `make ig-login` again.
+If Instagram asks for a **checkpoint**, the script prints a full `https://www.instagram.com/auth_platform/...` link and waits. **Leave it running.** Open the link in a browser logged into the same account (or tap "This was me" in the Instagram app), then press Enter so the script retries. Don't restart the script: each new run triggers a new checkpoint. If the link shows no prompt, use Option 2.
 
 ### Option 2: log in through the browser via an SSH tunnel
 
