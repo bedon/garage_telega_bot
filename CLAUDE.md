@@ -1,31 +1,27 @@
 # Garage Telega Bot
 
 ## Project Overview
-Python Telegram bot that automatically downloads videos from social media platforms (Instagram, Facebook, Twitter, TikTok) and forwards them to chat with original message deletion.
+Python Telegram bot that downloads videos/photos from social media links (Instagram, Facebook, X/Twitter, TikTok), re-posts them to the chat and deletes the original message.
 
 ## Architecture
-- **Main**: `src/main.py` - Bot initialization and message routing
-- **Handlers**: `src/handlers/` - Platform-specific download handlers (auto-discovered)
-- **Utils**: `src/utils.py` - Shared utilities (status randomization, handler loading, message deletion)
+- `src/main.py`: bot setup (`concurrent_updates`), message routing to the first matching handler
+- `src/config.py`: all env/config (loads `.env` from the project root)
+- `src/downloader.py`: shared async core: `run_ytdlp` (yt-dlp Python API in a thread), `download_file`, `fit_to_limit`/`compress_video` (ffmpeg), `send_media` (video/photo/album + delete original), `download_and_send`, `download_slot` semaphore
+- `src/handlers/`: one `BaseHandler` subclass per platform, auto-discovered. Each sets `URL_PATTERN` and implements `handle()`
+- `src/instagram_session.py`: Instagram session files (`data/instagram/cookies.txt` + `user_agent.txt`) shared by yt-dlp and instaloader
+- `src/ig_login.py`: `make ig-login` / `make ig-check`; logs in with instaloader and writes the session
+- `src/utils.py`: status prefix, handler loading, message deletion
+
+## Rules
+- Never call blocking code (`subprocess.run`, yt-dlp, instaloader) directly in async code: use `asyncio.to_thread` / `create_subprocess_exec`.
+- Instagram requests must always use `instagram_session.user_agent()`. Rotating UAs gets the session revoked.
+- Captions are HTML: escape user-provided text and URLs.
 
 ## Key Technologies
-- `python-telegram-bot==22.0` - Telegram API
-- `yt-dlp>=2025.3.31` - Video downloading
-- `aiohttp==3.11.18` - HTTP requests
-- `instaloader>=4.10.0` - Instagram content
-- `ffmpeg` - Video processing (system dependency)
-
-## Handler Pattern
-Each platform handler implements:
-- `can_handle(message)` - URL pattern matching
-- `handle(update, message, sender_name)` - Download and forward logic
-- Auto-discovery from `src/handlers/` directory
+python-telegram-bot 22, yt-dlp, instaloader, aiohttp, ffmpeg (system dependency)
 
 ## Testing
-- `pytest` with async support
-- Coverage reporting available
-- Tests in `tests/` directory
+`make test` (pytest, asyncio auto mode, `pythonpath = src`, so import modules as `handlers.x`, `downloader`, not `src.x`).
 
 ## Environment
-- `TELEGRAM_TOKEN` - Bot authentication (required)
-- `.env` file for configuration
+`TELEGRAM_TOKEN` (required), `LOG_LEVEL`, `INSTAGRAM_USERNAME`/`INSTAGRAM_PASSWORD` (ig-login only), `INSTAGRAM_DATA_DIR`, `INSTAGRAM_COOKIES_FILE`, `MAX_UPLOAD_MB`, `MAX_PARALLEL_DOWNLOADS`.

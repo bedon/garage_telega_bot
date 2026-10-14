@@ -1,49 +1,55 @@
-.PHONY: setup run stop test clean clean-all
+.PHONY: setup install run stop restart test clean clean-all git deploy dev dev-verbose ig-login ig-check update-ytdlp
+
+PY = venv/bin/python
+PID = bot_dude.pid
 
 setup:
 	python3 -m venv venv
-	. venv/bin/activate && pip install -r requirements.txt
+	$(MAKE) install
+
+install:
+	venv/bin/pip install -U -r requirements.txt -r requirements-dev.txt
 
 run:
-	. venv/bin/activate && nohup python src/main.py --instance=dude > bot.log 2>&1 & echo $$! > bot_dude.pid
+	nohup $(PY) src/main.py --instance=dude > bot.log 2>&1 & echo $$! > $(PID)
 
 stop:
-	pkill -f "python src/main.py --instance=dude"
+	-pkill -f "src/main.py --instance=dude"
+	rm -f $(PID)
 
-clean:
-	rm -rf venv
-	rm -f bot.log bot.pid
-	rm -rf .pytest_cache
-	rm -rf .coverage
-	rm -rf htmlcov
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
-	find . -type f -name "*.pyo" -delete
-	find . -type f -name "*.pyd" -delete
-
-clean-all: clean
-	rm -rf venv
-	find . -type d -name ".mypy_cache" -exec rm -rf {} +
-	find . -type d -name ".ruff_cache" -exec rm -rf {} +
+restart: stop run
 
 git:
 	git pull
 
-deploy: git stop run
+# yt-dlp is upgraded on every deploy: Instagram/TikTok extractors break often.
+deploy: git install stop run
 	@echo "Deployed"
 
+update-ytdlp:
+	venv/bin/pip install -U yt-dlp instaloader
+
+# Log in to Instagram from THIS machine (run on the server over SSH).
+ig-login:
+	$(PY) src/ig_login.py
+
+ig-check:
+	$(PY) src/ig_login.py --check
 
 dev:
-	python src/main.py
+	$(PY) src/main.py
 
 # Run with verbose logging (LOG_LEVEL=INFO) for debugging
 dev-verbose:
-	LOG_LEVEL=INFO python src/main.py
+	LOG_LEVEL=INFO $(PY) src/main.py
 
 test:
-	python -m pytest \
-		--cov=src \
-		--cov-report=term-missing \
-		--cov-report=html \
-		-v \
-		tests/ 
+	$(PY) -m pytest
+
+clean:
+	rm -f bot.log $(PID)
+	rm -rf .pytest_cache .coverage htmlcov
+	find . -path ./venv -prune -o -type d -name "__pycache__" -exec rm -rf {} +
+
+clean-all: clean
+	rm -rf venv .mypy_cache .ruff_cache

@@ -1,87 +1,61 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from telegram import Update, Message, User, Chat
-from telegram.ext import ContextTypes
-from src.main import handler, main
 
-@pytest.mark.asyncio
-async def test_handler_no_message():
-    # Test when update has no message
-    mock_update = MagicMock(spec=Update)
-    mock_update.message = None
-    mock_context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
-    
-    await handler(mock_update, mock_context)
-    # Should return without doing anything
+import pytest
+from telegram import Message, Update, User
 
-@pytest.mark.asyncio
-async def test_handler_no_text():
-    # Test when message has no text
-    mock_message = MagicMock(spec=Message)
-    mock_message.text = None
-    mock_update = MagicMock(spec=Update)
-    mock_update.message = mock_message
-    mock_context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
-    
-    await handler(mock_update, mock_context)
-    # Should return without doing anything
+import main
 
-@pytest.mark.asyncio
-async def test_handler_success():
-    # Test successful message handling
-    mock_message = MagicMock(spec=Message)
-    mock_message.text = "test message"
-    mock_message.from_user = MagicMock(spec=User)
-    mock_message.from_user.full_name = "Test User"
-    mock_message.chat_id = 123
-    
-    mock_update = MagicMock(spec=Update)
-    mock_update.message = mock_message
-    mock_context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
-    
-    # Mock the handlers
-    mock_handler = MagicMock()
-    mock_handler.can_handle.return_value = True
-    mock_handler.handle = AsyncMock()
-    
-    with patch('src.main.all_handlers', [mock_handler]):
-        await handler(mock_update, mock_context)
-        
-        # Verify handler was called
-        mock_handler.can_handle.assert_called_once_with("test message")
-        mock_handler.handle.assert_called_once()
 
-@pytest.mark.asyncio
-async def test_handler_exception():
-    # Test exception handling
-    mock_message = MagicMock(spec=Message)
-    mock_message.text = "test message"
-    mock_message.from_user = MagicMock(spec=User)
-    mock_message.from_user.full_name = "Test User"
-    mock_message.chat_id = 123
-    
-    mock_update = MagicMock(spec=Update)
-    mock_update.message = mock_message
-    mock_context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
-    
-    # Mock a handler that raises an exception
-    mock_handler = MagicMock()
-    mock_handler.can_handle.return_value = True
-    mock_handler.handle = AsyncMock(side_effect=Exception("Test error"))
-    
-    with patch('src.main.all_handlers', [mock_handler]):
-        # Should not raise an exception
-        await handler(mock_update, mock_context)
+def make_update(text):
+    update = MagicMock(spec=Update)
+    update.message = MagicMock(spec=Message)
+    update.message.text = text
+    update.message.from_user = MagicMock(spec=User, id=1, full_name="Test User")
+    update.message.chat_id = 123
+    return update
 
-def test_main():
-    # Test the main function
-    with patch('src.main.ApplicationBuilder') as mock_builder:
-        mock_app = MagicMock()
-        mock_builder.return_value.token.return_value.build.return_value = mock_app
-        
-        main()
-        
-        # Verify the application was built and started
-        mock_builder.return_value.token.assert_called_once()
-        mock_app.add_handler.assert_called_once()
-        mock_app.run_polling.assert_called_once() 
+
+async def test_handler_ignores_updates_without_message():
+    update = MagicMock(spec=Update)
+    update.message = None
+    await main.handler(update, MagicMock())
+
+
+async def test_handler_ignores_messages_without_text():
+    await main.handler(make_update(None), MagicMock())
+
+
+async def test_handler_dispatches_to_first_matching_handler():
+    first, second = MagicMock(), MagicMock()
+    first.can_handle.return_value = True
+    first.handle = AsyncMock()
+    second.handle = AsyncMock()
+    with patch.object(main, "all_handlers", [first, second]):
+        await main.handler(make_update("https://x.com/a/status/1"), MagicMock())
+    first.handle.assert_awaited_once()
+    assert first.handle.call_args.args[1] == "https://x.com/a/status/1"
+    second.handle.assert_not_called()
+
+
+async def test_handler_swallows_handler_exceptions():
+    failing = MagicMock()
+    failing.can_handle.return_value = True
+    failing.handle = AsyncMock(side_effect=Exception("boom"))
+    with patch.object(main, "all_handlers", [failing]):
+        await main.handler(make_update("link"), MagicMock())
+
+
+def test_main_requires_token(monkeypatch):
+    monkeypatch.setattr(main.config, "TELEGRAM_TOKEN", None)
+    with pytest.raises(ValueError):
+        main.main()
+
+
+def test_main_builds_and_polls(monkeypatch):
+    monkeypatch.setattr(main.config, "TELEGRAM_TOKEN", "123:abc")
+    with patch.object(main, "ApplicationBuilder") as builder:
+        main.main()
+    app = builder.return_value.token.return_value.concurrent_updates.return_value \
+        .media_write_timeout.return_value.build.return_value
+    app.add_handler.assert_called_once()
+    app.run_polling.assert_called_once()

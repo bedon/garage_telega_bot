@@ -50,3 +50,5 @@ htmlcov/
 bot_dude.pid
 
 instagram_cookies.txt
+# Instagram session (make ig-login)
+data/

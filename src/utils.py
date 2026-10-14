@@ -1,14 +1,21 @@
-import random
+import html
 import importlib
-import pkgutil
 import inspect
+import logging
+import pkgutil
+import random
+
 from telegram import Update, User
+
+logger = logging.getLogger(__name__)
+
 
 async def delete_message(update: Update) -> None:
     try:
         await update.message.delete()
     except Exception as e:
-        print(f"Failed to delete message: {e}")
+        logger.warning("Failed to delete message: %s", e)
+
 
 async def randomize_status(user: User, chat_id: int) -> str:
     # Initialize chat states if not exists
@@ -37,28 +44,23 @@ async def randomize_status(user: User, chat_id: int) -> str:
     else:
         status = random.choice(["👑 NICE GUY 👑", "😎 CHILL GUY 🚬", "COOL DUDE 🤘", "FUNNY DUDE 🤣"])
 
-    return f"by <a href=\"tg://user?id={user.id}\">{user.full_name}</a> {status}\n"
+    return f"by <a href=\"tg://user?id={user.id}\">{html.escape(user.full_name)}</a> {status}\n"
+
 
 def load_handlers():
     """
     Automatically discovers and loads all handler classes from the handlers directory.
     Returns a list of instantiated handler objects.
     """
+    handlers_module = importlib.import_module("handlers")
+    base = handlers_module.BaseHandler
     handlers = []
-    handlers_package = "handlers"
-    
-    # Import the handlers package
-    handlers_module = importlib.import_module(handlers_package)
-    
-    # Iterate through all modules in the handlers package
+
     for _, module_name, _ in pkgutil.iter_modules(handlers_module.__path__):
-        # Import the module
-        module = importlib.import_module(f"{handlers_package}.{module_name}")
-        
-        # Find all classes in the module that end with 'Handler'
-        for name, obj in inspect.getmembers(module):
-            if inspect.isclass(obj) and name.endswith('Handler') and obj.__module__ != 'handlers':
-                # Instantiate the handler and add it to the list
+        module = importlib.import_module(f"handlers.{module_name}")
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            # Only classes defined in this module (skips imported BaseHandler etc.)
+            if issubclass(obj, base) and obj is not base and obj.__module__ == module.__name__:
                 handlers.append(obj())
-    
+
     return handlers
