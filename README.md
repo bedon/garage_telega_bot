@@ -1,190 +1,130 @@
 # Social Media Video Downloader Bot
 
-A Telegram bot that automatically downloads and forwards videos from various social media platforms (Instagram, Facebook, Twitter, TikTok) to your chat.
+A Telegram bot that downloads videos (and Instagram photos/carousels) from Instagram, Facebook, X/Twitter and TikTok links posted in a chat, re-posts the media and deletes the original message.
 
 ## Features
 
-- Downloads videos from Instagram, Facebook, Twitter, and TikTok
-- Automatically forwards videos to the chat
-- Deletes original messages after successful download
-- Provides alternative download links if automatic download fails
-- Customizable user status messages
-- Automatic handler discovery and loading
-
-### System Dependencies
-
-FFmpeg is required for video processing. Install it using one of the following commands based on your operating system:
-
-```bash
-# On Ubuntu/Debian
-sudo apt-get install ffmpeg
-
-# On CentOS/RHEL
-sudo yum install ffmpeg
-
-# On macOS with Homebrew
-brew install ffmpeg
-```
+- Instagram reels, posts, carousels (sent as albums), `/tv/` and `/share/` links
+- TikTok (via tikwm, falls back to yt-dlp), X/Twitter and Facebook (via yt-dlp)
+- Links work anywhere in a message, with extra text around them
+- Downloads run in the background, so one slow video never blocks the bot
+- Videos over Telegram's 50 MB limit are re-encoded with ffmpeg to fit
+- Automatic handler discovery
 
 ## Setup
 
-1. Clone the repository:
+Requirements: Python 3.11+, `ffmpeg` (`apt install ffmpeg` / `brew install ffmpeg`).
+
 ```bash
 git clone <repository-url>
 cd garage_telega_bot
+make setup              # creates venv, installs requirements
+cp .env.example .env    # then set TELEGRAM_TOKEN
+make dev                # run in the foreground (make dev-verbose for INFO logs)
 ```
 
-2. Create and activate a virtual environment:
+On the server, `make run` / `make stop` / `make deploy` (pull, upgrade deps, restart). Logs go to `bot.log`.
+
+### Docker
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+docker build -t garage-bot .
+docker run -d --env-file .env -v $PWD/data:/app/data garage-bot
+# Instagram login inside the container:
+docker run -it --rm --env-file .env -v $PWD/data:/app/data garage-bot python src/ig_login.py
 ```
 
-3. Install dependencies:
+## Environment variables
+
+| Variable | Description |
+|---|---|
+| `TELEGRAM_TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) (required) |
+| `LOG_LEVEL` | `ERROR` (default), `INFO`, `DEBUG` |
+| `INSTAGRAM_USERNAME` / `INSTAGRAM_PASSWORD` | Used only by `make ig-login` |
+| `INSTAGRAM_DATA_DIR` | Where the Instagram session is stored (default `data/instagram`) |
+| `INSTAGRAM_COOKIES_FILE` | Use your own Netscape cookies file instead of `data/instagram/cookies.txt` |
+| `MAX_UPLOAD_MB` | Upload limit (default 50) |
+| `MAX_PARALLEL_DOWNLOADS` | Concurrent downloads (default 2) |
+
+## Instagram
+
+Many public reels download without logging in. From a server (datacenter IP) Instagram usually demands a login, so give the bot a session.
+
+**Why exporting cookies from your laptop doesn't work well:** Instagram ties a session to the device and location it was created on. Cookies from your laptop's browser used from a server in another country, with a different User-Agent, look like a stolen session and get revoked. The session has to be created **from the server's IP** and always used with **one fixed User-Agent**. The bot handles the User-Agent part; you only need to log in from the server.
+
+### Option 1: `make ig-login` (recommended)
+
+Over SSH, on the server:
+
 ```bash
-pip install -r requirements.txt
+make ig-login     # uses INSTAGRAM_USERNAME/PASSWORD from .env, or asks; asks for a 2FA code if enabled
+make ig-check     # verifies the saved session still works
 ```
 
-4. Configure environment variables:
-   - Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-   - Edit `.env` and add your Telegram bot token:
-   ```
-   TELEGRAM_TOKEN=your_telegram_bot_token_here
-   ```
+This saves `data/instagram/cookies.txt` and `data/instagram/user_agent.txt`. The running bot picks up a new session automatically, so no restart is needed.
 
-5. Run the bot:
+If Instagram asks for a **checkpoint**, the script prints a full `https://www.instagram.com/auth_platform/...` link and waits. **Leave it running.** Open the link in a browser logged into the same account (or tap "This was me" in the Instagram app), then press Enter so the script retries. Don't restart the script: each new run triggers a new checkpoint. If the link shows no prompt, use Option 2.
+
+### Option 2: log in through the browser via an SSH tunnel
+
+If the login script is blocked, log in with a real browser while routing its traffic through the server, so Instagram still sees the server's IP:
+
 ```bash
-python src/main.py
+ssh -D 1080 -N user@your-server          # leave running
+# macOS; on Linux run google-chrome with the same flags
+open -na "Google Chrome" --args --proxy-server="socks5://127.0.0.1:1080" --user-data-dir=/tmp/ig-profile
 ```
 
-## Environment Variables
+1. In that browser window, check https://ifconfig.me shows the server IP, then log in to instagram.com.
+2. Export cookies for instagram.com with [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) (Netscape format).
+3. Copy the browser's User-Agent (open `chrome://version`).
+4. Upload both:
 
-The bot uses the following environment variables:
-
-- `TELEGRAM_TOKEN`: Your Telegram bot token (required)
-  - Get it from [@BotFather](https://t.me/BotFather) on Telegram
-  - This token is used to authenticate your bot with the Telegram API
-  - Keep this token secure and never share it publicly
-- `LOG_LEVEL`: Logging verbosity (optional, default: `ERROR`)
-  - Set to `INFO` or `DEBUG` for verbose output when debugging (e.g. `LOG_LEVEL=INFO python src/main.py`)
-- `INSTAGRAM_USERNAME` / `INSTAGRAM_PASSWORD`: Instagram account credentials (optional)
-  - When set, instaloader logs into Instagram and is used as the first fallback after ReelSaver
-  - Use a **dedicated/burner account** — Instagram may flag or temporarily lock accounts used for automated access
-- `INSTAGRAM_COOKIES_FILE`: Path to Instagram cookies file (optional)
-  - Used by yt-dlp fallback when ReelSaver fails and no login credentials are set
-  - Cookies must be in Netscape format (see below)
-
-### Instagram authentication (login/password — recommended)
-
-The simplest way to authenticate is to add your Instagram credentials to `.env`:
-
-```
-INSTAGRAM_USERNAME=my_burner_account
-INSTAGRAM_PASSWORD=secret123
+```bash
+scp cookies.txt user@your-server:/path/to/garage_telega_bot/data/instagram/cookies.txt
+ssh user@your-server 'echo "<paste user agent>" > /path/to/garage_telega_bot/data/instagram/user_agent.txt'
 ```
 
-The bot uses `instaloader` to log in once at startup and reuse the session. **Do not use your personal account** — use a dedicated one to avoid bans.
+### When it stops working
 
-### Getting Instagram cookies (for headless servers)
+- The log shows `Instagram session looks expired or flagged`: run `make ig-login` again.
+- Downloads fail across the board: run `make update-ytdlp` (Instagram changes often; `make deploy` also upgrades).
+- Use a dedicated Instagram account, not your personal one.
 
-If you run the bot on a server without a browser, export cookies on your desktop/laptop and transfer them:
+## How downloads work
 
-1. **On your desktop/laptop** (with a browser where you're logged into Instagram):
-   - Install a cookies export extension:
-     - Chrome: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
-     - Firefox: [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
-   - Go to [instagram.com](https://www.instagram.com) and ensure you're logged in
-   - Use the extension to export cookies for `instagram.com`
-   - Save as `instagram_cookies.txt` (Netscape format)
+| Platform | Order |
+|---|---|
+| Instagram reel | yt-dlp (with session if present) → instaloader (session only) → ReelSaver API |
+| Instagram post `/p/` | instaloader first when a session exists (handles photos and carousels), then the same as a reel |
+| TikTok | tikwm API → yt-dlp |
+| X / Facebook | yt-dlp |
 
-2. **Transfer to your server**:
-   ```bash
-   scp instagram_cookies.txt user@your-server:/path/to/garage_telega_bot/
-   ```
+Shared code lives in `src/downloader.py`: `run_ytdlp`, `download_file`, `send_media` (video/photo/album + deletes the original), `fit_to_limit` (ffmpeg compression) and `download_and_send`.
 
-3. **Add to `.env`**:
-   ```
-   INSTAGRAM_COOKIES_FILE=/path/to/garage_telega_bot/instagram_cookies.txt
-   ```
+## Adding a handler
 
-   Cookies expire (typically after a few weeks). Re-export and replace the file when downloads start failing again.
-
-## Creating Custom Handlers
-
-You can add support for additional social media platforms by creating new handler classes. The bot automatically discovers and loads all handlers from the `src/handlers` directory. Here's how to create a new handler:
-
-1. Create a new file in `src/handlers/` (e.g., `youtube_handler.py`)
-2. Implement the handler class following this template:
+Create `src/handlers/<name>_handler.py` with a `BaseHandler` subclass. It is discovered automatically.
 
 ```python
-from telegram import Update
-from utils import delete_message
+import re
+from downloader import download_and_send
+from . import BaseHandler
 
-class YouTubeHandler:
-    def __init__(self):
-        # Define URL patterns that this handler can process
-        self.YOUTUBE_LINKS = ["https://youtube.com/", "https://youtu.be/"]
 
-    def can_handle(self, message: str) -> bool:
-        # Check if the message contains any of the defined URL patterns
-        return any(link in message for link in self.YOUTUBE_LINKS)
+class YouTubeHandler(BaseHandler):
+    URL_PATTERN = re.compile(r"https?://(?:www\.)?(?:youtube\.com/shorts/|youtu\.be/)[^\s]+")
 
-    async def handle(self, update: Update, message: str, sender_name: str) -> None:
-        try:
-            # Your video download and processing logic here
-            youtube_link = f'<a href="{message}">📺 From YouTube</a>'
-            
-            # Example: Download and send video
-            await update.message.chat.send_video(
-                video=video_url,
-                caption=f"{sender_name} {youtube_link}",
-                parse_mode="HTML"
-            )
-            await delete_message(update)
-            
-        except Exception as e:
-            print(f"Error processing YouTube video: {e}")
-            # Handle errors appropriately
+    async def handle(self, update, message: str, sender_name: str) -> None:
+        url = self.extract_url(message)
+        await download_and_send(update, url, self._format_caption(sender_name, url, "📺 YouTube"))
 ```
 
-3. The handler will be automatically loaded when the bot starts. No need to modify any other files!
+`BaseHandler` provides `can_handle()` / `extract_url()` from `URL_PATTERN` and `_format_caption()` (HTML-escaped link).
 
-### Handler Naming Convention
+## Tests
 
-- Handler class names must end with `Handler` (e.g., `YouTubeHandler`, `InstagramHandler`)
-- The file name should match the class name in lowercase with underscores (e.g., `youtube_handler.py` for `YouTubeHandler`)
-
-## Handler Development Guidelines
-
-1. **URL Pattern Matching**:
-   - Define clear URL patterns in the `__init__` method
-   - Use `can_handle()` to check if the handler can process the message
-
-2. **Error Handling**:
-   - Implement proper error handling in the `handle()` method
-   - Provide fallback options or alternative download links
-   - Log errors for debugging
-
-3. **Message Formatting**:
-   - Use HTML formatting for links and captions
-   - Include the sender's name and platform icon in the caption
-   - Delete the original message after successful processing
-
-4. **Resource Management**:
-   - Clean up temporary files after use
-   - Handle memory efficiently when processing large files
-   - Implement timeouts for external API calls
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement your changes
-4. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+```bash
+make install   # includes requirements-dev.txt
+make test
+```

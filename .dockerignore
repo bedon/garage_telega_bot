@@ -1,0 +1,10 @@
+.git
+venv
+.venv
+data
+tests
+htmlcov
+.coverage
+*.log
+.env
+__pycache__

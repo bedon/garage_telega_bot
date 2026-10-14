@@ -1,55 +1,54 @@
-import os
-from dotenv import load_dotenv
-from utils import randomize_status, load_handlers
 import logging
 
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
-# Set up logger (LOG_LEVEL=INFO or DEBUG for verbose output)
-log_level = os.getenv("LOG_LEVEL", "ERROR").upper()
-numeric_level = getattr(logging, log_level, logging.ERROR)
+import config
+from utils import load_handlers, randomize_status
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=numeric_level,
+    level=getattr(logging, config.LOG_LEVEL, logging.ERROR),
 )
+# httpx logs every Telegram poll at INFO; keep it quiet.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
-TOKEN = os.getenv('TELEGRAM_TOKEN')
-
-if not TOKEN:
-    raise ValueError("TELEGRAM_TOKEN environment variable is not set")
-
-# Initialize all handlers
 all_handlers = load_handlers()
+
 
 async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None or update.message.text is None:
         return
 
     message = update.message.text
-    sender = update.message.from_user
-    chat_id = update.message.chat_id
-    user_prefix = await randomize_status(sender, chat_id)
+    # Streak tracking counts every message, not only links.
+    user_prefix = await randomize_status(update.message.from_user, update.message.chat_id)
+    handler_instance = next((h for h in all_handlers if h.can_handle(message)), None)
+    if handler_instance is None:
+        return
 
     try:
-        # Try to handle the message with each handler
-        for handler_instance in all_handlers:
-            if handler_instance.can_handle(message):
-                await handler_instance.handle(update, message, user_prefix)
-                return
-
+        await handler_instance.handle(update, message, user_prefix)
     except Exception as e:
-        logger.error(f"Error processing message: {e}", exc_info=True)
+        logger.error("Error processing message: %s", e, exc_info=True)
+
 
 def main():
-    # Initialize and run the bot
-    app = ApplicationBuilder().token(TOKEN).build()
+    if not config.TELEGRAM_TOKEN:
+        raise ValueError("TELEGRAM_TOKEN environment variable is not set")
+
+    app = (
+        ApplicationBuilder()
+        .token(config.TELEGRAM_TOKEN)
+        .concurrent_updates(True)
+        .media_write_timeout(120)
+        .build()
+    )
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handler))
     app.run_polling()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
